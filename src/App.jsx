@@ -7,7 +7,7 @@ import {
 } from "react-router-dom";
 import Home from "./Components/Home";
 import MaterialList from "./Components/MaterialList";
-import AddMateriall from "./Components/AddMateriall";
+import AddMateriall from "./Components/AddMaterial";
 import Sidebar from "./Components/SideBar";
 import JobCard from "./Components/JobCard";
 import AddJob from "./Components/AddJob";
