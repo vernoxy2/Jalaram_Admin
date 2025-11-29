@@ -11,6 +11,7 @@ import AddMateriall from "./Components/AddMaterial";
 import Sidebar from "./Components/SideBar";
 import JobCard from "./Components/JobCard";
 import AddJob from "./Components/AddJob";
+import JobDetailScreen from "./Components/JobDetailScreen";
 
 const App = () => {
   return (
@@ -23,6 +24,9 @@ const App = () => {
         <Route path="/material/edit/:id" element={<AddMateriall />} />
         <Route path="/jobcard" element={<JobCard /> } />
         <Route path="/addjob" element={<AddJob /> } />
+        <Route path="/addjob/:id" element={<AddJob /> } />
+        <Route path="/jobDetailScreen/:id" element={<JobDetailScreen /> } />
+
       </Routes>
     </Router>
   );
