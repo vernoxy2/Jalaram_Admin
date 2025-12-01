@@ -8,15 +8,19 @@ import {
 import Home from "./Components/Home";
 import MaterialList from "./Components/MaterialList";
 import AddMateriall from "./Components/AddMaterial";
-import Sidebar from "./Components/SideBar";
 import JobCard from "./Components/JobCard";
 import AddJob from "./Components/AddJob";
 import JobDetailScreen from "./Components/JobDetailScreen";
+import AdminLayout from "./Components/Layout/AdminLayout";
+import Dashboard from "./Pages/Dashboard";
 
 const App = () => {
   return (
     <Router>
-      <Sidebar/>
+      
+      <AdminLayout >
+        <Dashboard/>
+      </AdminLayout>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/material" element={<MaterialList />} />
