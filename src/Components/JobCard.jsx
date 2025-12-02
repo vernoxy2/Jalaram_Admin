@@ -189,7 +189,7 @@ const JobCard = () => {
 
       {/* TABLE */}
       <div className="overflow-x-auto">
-        <table className="table-auto w-full rounded-xl">
+        <table className="table-auto rounded-xl">
           <thead className="bg-[#3668B1] text-white">                                                                              
             <tr>
               <th className="px-4 py-2">Job Card No</th>

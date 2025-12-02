@@ -12,6 +12,8 @@ import Sidebar from "./Components/SideBar";
 import JobCard from "./Components/JobCard";
 import AddJob from "./Components/AddJob";
 import JobDetailScreen from "./Components/JobDetailScreen";
+import MaterialIssueRequestList from "./Components/MaterialIssueRequestList";
+import MaterialIssueForm from "./Components/MaterialIssueForm";
 
 const App = () => {
   return (
@@ -26,6 +28,8 @@ const App = () => {
         <Route path="/addjob" element={<AddJob /> } />
         <Route path="/addjob/:id" element={<AddJob /> } />
         <Route path="/jobDetailScreen/:id" element={<JobDetailScreen /> } />
+        <Route path="/materialIssueRequestList" element={<MaterialIssueRequestList />} />
+        <Route path="/materialIssueForm/:id" element={<MaterialIssueForm />} />
 
       </Routes>
     </Router>

@@ -21,6 +21,7 @@ const MaterialList = () => {
 
       const list = [];
       querySnapshot.forEach((doc) => {
+
         list.push({ id: doc.id, ...doc.data() });
       });
 
@@ -123,6 +124,7 @@ const MaterialList = () => {
               <th className="px-4 py-2">Paper Code</th>
               <th className="px-4 py-2">Company</th>
               <th className="px-4 py-2">Material Type</th>
+              <th className="px-4 py-2">Paper Size</th>
               <th className="px-4 py-2">Total Meter</th>
               <th className="px-4 py-2">Action</th>
             </tr>
@@ -144,6 +146,7 @@ const MaterialList = () => {
                 <td className="border px-4 py-2">{item.paperCode}</td>
                 <td className="border px-4 py-2">{item.companyName || "-"}</td>
                 <td className="border px-4 py-2">{item.materialType || "-"}</td>
+                <td className="border px-4 py-2">{item.paperSize || "-"}</td>
                 <td className="border px-4 py-2">{item.totalRunningMeter}</td>
                 <td className="border px-4 py-2 text-center space-x-2">
                   <button

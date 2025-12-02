@@ -17,6 +17,12 @@ const Home = () => {
           Job Card
         </button>
       </Link>
+       <Link to="/materialIssueRequestList">
+        <button className="bg-[#3668B1] text-white py-3 px-6 rounded-md">
+          {" "}
+          Material Issue Request List
+        </button>
+      </Link>
     </div>
   );
 };

@@ -25,6 +25,7 @@ const AddMaterial = () => {
   const [companyName, setCompanyName] = useState("");
   const [materialType, setMaterialType] = useState("");
   const [rows, setRows] = useState([{ runningMeter: "", roll: "", total: "" }]);
+  const [paperSize, setPaperSize] = useState("");
 
   /* ---------------------------------------------------
      LOAD DATA IN EDIT MODE
@@ -40,6 +41,7 @@ const AddMaterial = () => {
         const data = snapshot.data();
         setCompanyName(data.companyName);
         setMaterialType(data.materialType);
+        setPaperSize(data.paperSize || "");
         setDate(
           data.date?.seconds
             ? new Date(data.date.seconds * 1000).toISOString().split("T")[0]
@@ -115,6 +117,7 @@ const AddMaterial = () => {
         await updateDoc(doc(db, "materials", id), {
           // companyName, ← REMOVE this to prevent change
           materialType,
+          paperSize,
           runningMeter: Number(row.runningMeter),
           roll: Number(row.roll),
           totalRunningMeter: Number(row.total),
@@ -160,6 +163,7 @@ const AddMaterial = () => {
         await addDoc(collection(db, "materials"), {
           companyName,
           materialType,
+          paperSize,
           runningMeter: Number(row.runningMeter),
           roll: Number(row.roll),
           totalRunningMeter: Number(row.total),
@@ -222,6 +226,15 @@ const AddMaterial = () => {
             </option>
           ))}
         </select>
+
+        {/* PAPER SIZE */}
+        <input
+          type="text"
+          placeholder="Paper Size(mm)"
+          className="border p-3 rounded-xl"
+          value={paperSize}
+          onChange={(e) => setPaperSize(e.target.value)}
+        />
 
         {/* MATERIAL DETAILS */}
         <h2 className="text-xl mt-3 font-semibold">Material Details</h2>
