@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
   Link,
+  Outlet,
   useNavigate,
   useParams,
   useSearchParams,
@@ -31,10 +32,26 @@ import {
   teethSize,
   upsAcross,
   windingDirection,
-} from "../utils/constant";
+} from "../../utils/constant";
 import { startTransition } from "react";
+import PrimaryBtn from "../../Components/PrimaryBtn";
 
 const db = getFirestore(getApp()); // assumes firebase app already initialized
+
+const PrimaryInput = ({ type, value, onChange, name, placeholder }) => {
+  return (
+    <input
+      type={type}
+      value={value}
+      name={name}
+      placeholder={placeholder}
+      onChange={onChange}
+      className="inputStyle"
+    />
+  );
+};
+
+
 
 const AddJob = () => {
   const navigate = useNavigate();
@@ -251,93 +268,84 @@ const AddJob = () => {
   };
 
   return (
-    <div className="py-10 flex flex-col gap-3 justify-center items-center bg-gray-100">
-      <h1 className="text-2xl">{isEdit ? "Edit Job" : "Add New Job"}</h1>
+    <div className="space-y-5">
+      <h1>{isEdit ? "Edit Job" : "Add New Job"}</h1>
+      <hr className="mb-20" />
 
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-3 w-full max-w-md"
-      >
+    <div className="py-16 mt-10 space-y-10 bg-gray-100 container rounded-2xl">
+      <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-8 w-full ">
         {/* PO No */}
-        <label className="font-medium">PO No:</label>
-        <input
-          type="text"
+        <PrimaryInput
+          type={"text"}
           name="poNo"
+          placeholder="Phone No"
           value={poNo}
           onChange={(e) => setPoNo(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
         />
-
+        
         {/* Date */}
-        <label className="font-medium">Job Date:</label>
-        <input
-          type="date"
+        <PrimaryInput
+          type={"date"}
           name="jobDate"
+          placeholder="Job Date"
           value={dateInputValue(jobDate)}
           onChange={(e) => setJobDate(new Date(e.target.value))}
-          className="border border-black/20 rounded-2xl w-full p-3"
         />
 
         {/* Job Name */}
-        <label className="font-medium">Job Name:</label>
-        <input
-          type="text"
+        <PrimaryInput
+          type={"text"}
           name="jobName"
+          placeholder="Job Name"
           value={jobName}
           onChange={(e) => setJobName(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
         />
 
         {/* Job Card No */}
-        <label className="font-medium">Job Card No:</label>
-        <input
-          type="text"
+        <PrimaryInput
+          type={"text"}
           name="jobCardNo"
+          placeholder="Job Card No"
           value={jobCardNo}
           onChange={(e) => setJobCardNo(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3 bg-gray-50"
-          readOnly={isEdit ? false : true} // allow changing if editing, but auto-generated on create
         />
 
         {/* Customer Name */}
-        <label className="font-medium">Customer Name:</label>
-        <input
-          type="text"
+        <PrimaryInput
+          type={"text"}
           name="customerName"
+          placeholder="Customer Name"
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
         />
 
         {/* Job Original Size */}
-        <label className="font-medium">Job Original Size:</label>
-        <input
-          type="text"
+        <PrimaryInput
+          type={"text"}
           name="jobSize"
+          placeholder="Job Original Size"
           value={jobSize}
           onChange={(e) => setJobSize(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
         />
-
+        
         {/* Job Qty */}
-        <label className="font-medium">Job Qty:</label>
-        <input
-          type="number"
+        <PrimaryInput
+          type={"number"}
           name="jobQty"
+          placeholder="Job Qty"
           value={jobQty}
           onChange={(e) => setJobQty(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
         />
 
         {/* Job Paper / Film Material */}
-        <label className="font-medium">Job Paper / File Material:</label>
+        {/* <label className="font-medium">Job Paper / File Material:</label> */}
         <select
           name="jobPaper"
           value={jobPaper}
           onChange={(e) => setJobPaper(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
+          className="inputStyle"
         >
-          <option value="">Select material</option>
+          <option disabled value="" className="text-[#848282]">Job Paper/file Material:</option>
           {materialTypeList.map((item) => (
             <option key={item.value} value={item.value}>
               {item.label}
@@ -346,12 +354,12 @@ const AddJob = () => {
         </select>
 
         {/* Printing Plate Size */}
-        <label className="font-medium">Printing Plate Size:</label>
+        {/* <label className="font-medium">Printing Plate Size:</label> */}
         <select
           name="plateSize"
           value={plateSize}
           onChange={(e) => setPlateSize(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
+          className="inputStyle"
         >
           <option value="">Select plate size</option>
           {printingPlateSize.map((item) => (
@@ -362,12 +370,12 @@ const AddJob = () => {
         </select>
 
         {/* Across Ups */}
-        <label className="font-medium">Across Ups:</label>
+        {/* <label className="font-medium">Across Ups:</label> */}
         <select
           name="upsAcross"
           value={upsAcrossValue}
           onChange={(e) => setUpsAcrossValue(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
+          className="inputStyle"
         >
           <option value="">Select ups</option>
           {upsAcross.map((item) => (
@@ -378,22 +386,23 @@ const AddJob = () => {
         </select>
 
         {/* Across Gap */}
-        <label className="font-medium">Across Gap:</label>
-        <input
-          type="number"
+        <PrimaryInput
+          type={"number"}
           name="acrossGap"
+          placeholder="Across Gap"
           value={acrossGap}
           onChange={(e) => setAcrossGap(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
         />
+        {/* <label className="font-medium">Across Gap:</label> */}
+        
 
         {/* Around */}
-        <label className="font-medium">Around:</label>
+        {/* <label className="font-medium">Around:</label> */}
         <select
           name="around"
           value={aroundValue}
           onChange={(e) => setAroundValue(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
+          className="inputStyle"
         >
           <option value="">Select around</option>
           {around.map((item) => (
@@ -404,22 +413,23 @@ const AddJob = () => {
         </select>
 
         {/* Around Gap */}
-        <label className="font-medium">Around Gap:</label>
-        <input
-          type="number"
+        <PrimaryInput
+          type={"number"}
           name="aroundGap"
+          placeholder="Around Gap"
           value={aroundGap}
           onChange={(e) => setAroundGap(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
         />
+        {/* <label className="font-medium">Around Gap:</label> */}
+         
 
         {/* Teeth Size */}
-        <label className="font-medium">Teeth Size:</label>
+        {/* <label className="font-medium">Teeth Size:</label> */}
         <select
           name="teethSize"
           value={teethSizeValue}
           onChange={(e) => setTeethSizeValue(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
+          className="inputStyle"
         >
           <option value="">Select teeth size</option>
           {teethSize.map((item) => (
@@ -430,12 +440,12 @@ const AddJob = () => {
         </select>
 
         {/* Blocks */}
-        <label className="font-medium">Blocks:</label>
+        {/* <label className="font-medium">Blocks:</label> */}
         <select
           name="blocks"
           value={blocksValue}
           onChange={(e) => setBlocksValue(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
+          className="inputStyle"
         >
           <option value="">Select blocks</option>
           {blocks.map((item) => (
@@ -446,12 +456,12 @@ const AddJob = () => {
         </select>
 
         {/* Winding Direction */}
-        <label className="font-medium">Winding Direction:</label>
+        {/* <label className="font-medium">Winding Direction:</label> */}
         <select
           name="windingDirection"
           value={windingDirectionValue}
           onChange={(e) => setWindingDirectionValue(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
+          className="inputStyle"
         >
           <option value="">Select winding direction</option>
           {windingDirection.map((item) => (
@@ -462,12 +472,12 @@ const AddJob = () => {
         </select>
 
         {/* Label Type */}
-        <label className="font-medium">Label Type:</label>
+        {/* <label className="font-medium">Label Type:</label> */}
         <select
           name="labelType"
           value={selectedLabelType}
           onChange={(e) => setSelectedLabelType(e.target.value)}
-          className="border border-black/20 rounded-2xl w-full p-3"
+          className="inputStyle"
         >
           <option value="">Select label type</option>
           {labelType.map((item) => (
@@ -476,25 +486,15 @@ const AddJob = () => {
             </option>
           ))}
         </select>
-
-        <button
-          type="submit"
-          className="bg-[#3668B1] text-white py-3 px-6 rounded-md font-bold mt-4"
-        >
-          {isEdit ? "Update" : "Submit"}
-        </button>
-
-        <Link
-          to="/jobcard"
-          className="bg-[#EFEDED] text-black border hover:border-black duration-200 py-3 px-6 rounded-md text-center mt-2"
-        >
-          Back
-        </Link>
       </form>
+      <PrimaryBtn onClick={handleSubmit} className=" w-full mx-auto md:col-span-2">
+        Submit
+      </PrimaryBtn>
 
       {message && (
         <div className="mt-4 text-green-600 font-bold text-lg">{message}</div>
       )}
+    </div>
     </div>
   );
 };
