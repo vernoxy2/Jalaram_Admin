@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { companyList, materialTypeList } from "../utils/constant";
+import { companyList, materialTypeList } from "../../utils/constant";
 import {
   collection,
   addDoc,
@@ -12,8 +12,22 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../../firebase";
 import moment from "moment";
+import PrimaryBtn from "../../Components/PrimaryBtn";
+import Addbtn from "../../Components/Addbtn";
+
+const PrimaryInput = ({ type, value, onChange, placeholder }) => {
+  return (
+    <input
+      type={type}
+      value={value}
+      placeholder={placeholder}
+      onChange={onChange}
+      className="inputStyle"
+    />
+  );
+};
 
 const AddMaterial = () => {
   const navigate = useNavigate();
@@ -180,114 +194,122 @@ const AddMaterial = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center pt-10 bg-gray-100">
-      <h1 className="text-2xl font-bold">
-        {isEdit ? "Edit Material" : "Add Material"}
-      </h1>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-1/3 mt-4">
-        {/* DATE */}
-        <input
-          type="date"
-          className="border p-3 rounded-xl"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-
-        {/* COMPANY */}
-        <select
-          className="border p-3 rounded-xl"
-          value={companyName}
-          onChange={(e) => setCompanyName(e.target.value)}
-          disabled={isEdit}
-        >
-          <option value="">Select Company</option>
-          {companyList.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-
-        {/* MATERIAL TYPE */}
-        <select
-          className="border p-3 rounded-xl"
-          value={materialType}
-          onChange={(e) => setMaterialType(e.target.value)}
-        >
-          <option value="">Select Material Type</option>
-          {materialTypeList.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-
-        {/* MATERIAL DETAILS */}
-        <h2 className="text-xl mt-3 font-semibold">Material Details</h2>
-
-        {rows.map((row, index) => (
-          <div key={index} className="grid grid-cols-4 gap-2 items-center">
-            <input
-              type="number"
-              placeholder="Running Meter"
-              className="border p-3 rounded-xl"
-              value={row.runningMeter}
-              onChange={(e) =>
-                handleRowChange(index, "runningMeter", e.target.value)
-              }
+    <div className="space-y-5">
+      <h1>{isEdit ? "Edit Material" : "Add Material"}</h1>
+      <hr />
+      <div className="py-16 mt-10 space-y-10 bg-gray-100 container rounded-2xl">
+        <form onSubmit={handleSubmit} className="space-y-10">
+          <div className="grid md:grid-cols-2 gap-4 md:gap-8">
+            {/* DATE */}
+            <PrimaryInput
+              type="date"
+              placeholder="Date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
             />
+            
+            {/* COMPANY */}
+            <select
+              className="inputStyle"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              disabled={isEdit}
+            >
+              <option disabled value="">Select Company Name</option>
+              {companyList.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
 
-            <input
-              type="number"
-              placeholder="Roll"
-              className="border p-3 rounded-xl"
-              value={row.roll}
-              onChange={(e) => handleRowChange(index, "roll", e.target.value)}
-            />
+            {/* MATERIAL TYPE */}
+            <select
+              className="inputStyle"
+              value={materialType}
+              onChange={(e) => setMaterialType(e.target.value)}
+            >
+              <option disabled value="">Select Material Type</option>
+              {materialTypeList.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
 
-            <input
-              type="text"
-              placeholder="Total"
-              className="border p-3 rounded-xl bg-gray-200"
-              value={row.total}
-              readOnly
-            />
+            {/* Paper Size */}
+            <PrimaryInput type="number" placeholder="Paper Size" />
+          </div>
+          <hr />
 
-            {/* DELETE BUTTON */}
-            {!isEdit && (
-              <button
-                type="button"
-                onClick={() => removeRow(index)}
-                className="text-red-600 font-bold"
+          {/* MATERIAL DETAILS */}
+          <div className="space-y-5">
+            <h2>Material Details</h2>
+
+            {rows.map((row, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-2 md:grid-cols-4 gap-2 items-center"
               >
-                X
-              </button>
+                <input
+                  type="number"
+                  placeholder="Running Meter"
+                  className="border p-3 rounded-xl"
+                  value={row.runningMeter}
+                  onChange={(e) =>
+                    handleRowChange(index, "runningMeter", e.target.value)
+                  }
+                />
+
+                <input
+                  type="number"
+                  placeholder="Roll"
+                  className="border p-3 rounded-xl"
+                  value={row.roll}
+                  onChange={(e) =>
+                    handleRowChange(index, "roll", e.target.value)
+                  }
+                />
+
+                <input
+                  type="text"
+                  placeholder="Total"
+                  className="border p-3 rounded-xl bg-gray-200"
+                  value={row.total}
+                  readOnly
+                />
+
+                {/* DELETE BUTTON */}
+                {!isEdit && (
+                  <button
+                    type="button"
+                    onClick={() => removeRow(index)}
+                    className="text-red-600 font-bold"
+                  >
+                    X
+                  </button>
+                )}
+              </div>
+            ))}
+
+            {!isEdit && (
+              // <button
+              //   type="button"
+              //   onClick={addRow}
+              //   className="text-blue-600 font-bold underline text-left"
+              // >
+              //   + Add Row
+              // </button>
+              <Addbtn onClick={addRow}>Add Row</Addbtn>
             )}
+
+            {/* SUBMIT */}
+            <PrimaryBtn className="w-full" type="submit">
+              {isEdit ? "Update" : "Submit"}
+            </PrimaryBtn>
           </div>
-        ))}
-
-        {!isEdit && (
-          <button
-            type="button"
-            onClick={addRow}
-            className="text-blue-600 font-bold underline text-left"
-          >
-            + Add Row
-          </button>
-        )}
-
-        {/* SUBMIT */}
-        <button className="bg-blue-600 text-white py-3 rounded-xl font-bold">
-          {isEdit ? "Update" : "Submit"}
-        </button>
-
-        <Link to="/material">
-          <div className="bg-gray-300 text-black py-3 px-6 rounded-xl text-center">
-            Back
-          </div>
-        </Link>
-      </form>
+        </form>
+      </div>
     </div>
   );
 };

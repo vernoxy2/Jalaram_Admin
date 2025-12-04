@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import { collection, getDocs, doc, deleteDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../../firebase";
 import { useNavigate } from "react-router-dom";
+import Addbtn from "../../Components/Addbtn";
+import { FiSearch } from "react-icons/fi";
+import { FaEye } from "react-icons/fa6";
+import { RiPencilFill } from "react-icons/ri";
 
 const MaterialList = () => {
   const navigate = useNavigate();
@@ -81,56 +85,46 @@ const MaterialList = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col gap-3 pt-10 justify-start items-center bg-gray-100">
-      <h1 className="text-2xl ">Material Page</h1>
+    <div className="space-y-4">
+      <h1>Material In</h1>
+      <hr />
 
       {/* Buttons */}
-      <div className="flex gap-10">
-        <Link to="/addmaterial">
-          <button className="bg-[#3668B1] text-white py-3 px-6 rounded-md">
-            Add material
-          </button>
-        </Link>
-        <Link to="/">
-          <button className="bg-[#EFEDED] text-black border hover:border-black duration-200 py-3 px-6 rounded-md">
-            Back to Home
-          </button>
-        </Link>
-      </div>
+      <Addbtn to="/material_in/add_material"> Add Material </Addbtn>
 
-      {/* Search */}
-      <div className="w-80">
+      <div className=" relative">
         <input
           type="text"
-          placeholder="Search"
-          className="border border-black/20 rounded-2xl w-full p-3"
+          placeholder="Search Job"
+          className="border border-black/20 rounded-3xl w-full p-3 pr-10 text-sm" // add padding-right for icon
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
-            setCurrentPage(1); // Reset to page 1 when searching
+            setCurrentPage(1);
           }}
         />
+        <FiSearch className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
       </div>
 
-      <p className="font-bold mt-5">Material List</p>
+      <h2>Material List</h2>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-2xl shadow-lg">
         <table className="table-auto w-full rounded-xl">
-          <thead className="bg-[#3668B1] text-white">
+          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-xl px-3  text-white">
             <tr>
-              <th className="px-4 py-2">Date</th>
-              <th className="px-4 py-2">Paper Code</th>
-              <th className="px-4 py-2">Company</th>
-              <th className="px-4 py-2">Material Type</th>
-              <th className="px-4 py-2">Total Meter</th>
-              <th className="px-4 py-2">Action</th>
+              <th className="px-3 py-2 border-r-2">Date</th>
+              <th className="px-4 py-2 border-r-2">Paper Code</th>
+              <th className="px-4 py-2 border-r-2">Company</th>
+              <th className="px-4 py-2 border-r-2">Material Type</th>
+              <th className="px-4 py-2 border-r-2">Total Meter</th>
+              <th className="px-4 py-2 ">Action</th>
             </tr>
           </thead>
 
           <tbody>
             {currentItems.map((item) => (
-              <tr key={item.id}>
+              <tr className="text-center" key={item.id}>
                 <td className="border px-4 py-2">
                   {item.createdAt
                     ? new Date(
@@ -145,19 +139,18 @@ const MaterialList = () => {
                 <td className="border px-4 py-2">{item.companyName || "-"}</td>
                 <td className="border px-4 py-2">{item.materialType || "-"}</td>
                 <td className="border px-4 py-2">{item.totalRunningMeter}</td>
-                <td className="border px-4 py-2 text-center space-x-2">
-                  <button
-                    onClick={() => navigate(`/material/edit/${item.id}`)}
-                    className="bg-blue-500 text-white px-3 py-1 rounded-lg"
-                  >
-                    Edit
-                  </button>
-
+                <td className="border py-2 text-center space-x-2">
                   <button
                     onClick={() => handleDelete(item.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded-lg"
+                    className="bg-primary text-white p-1 rounded text-2xl"
                   >
-                    Delete
+                    <FaEye />
+                  </button>
+                  <button
+                    onClick={() => navigate(`edit/${item.id}`)}
+                    className="bg-[#D2D2D2] text-primary p-1 rounded text-2xl"
+                  >
+                    <RiPencilFill />
                   </button>
                 </td>
               </tr>
@@ -204,6 +197,7 @@ const MaterialList = () => {
           Next
         </button>
       </div>
+      <Outlet />
     </div>
   );
 };
