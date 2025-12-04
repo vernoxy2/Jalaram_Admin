@@ -9,10 +9,13 @@ const Sidebar = () => {
   const toggleMobileSidebar = () => setMobileOpen(!mobileOpen);
 
   const menuItems = [
-    { name: "Home", path: "/" },
-    { name: "Add Material", path: "/add-material" },
-    { name: "Users", path: "/users" },
-    { name: "Settings", path: "/settings" },
+    { name: "Dashboard", path: "/" },     
+    { name: "Job Card", path: "/jobcard" },
+    { name: "Material In", path: "/material_in" },
+    { name: "Material Issue", path: "/issue_material" },
+    { name: "Dispatch", path: "/dispatch" },
+    { name: "Total Inventory", path: "/total_inventory" },
+    { name: "Stock", path: "/stock" },
   ];
 
   return (
@@ -93,8 +96,7 @@ const Sidebar = () => {
           ☰
         </button>
 
-        <h1 className="text-2xl font-bold">Main Content Area</h1>
-        <p>Add your content here.</p>
+          
       </div>
     </div>
   );

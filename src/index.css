@@ -7,6 +7,30 @@
 @tailwind utilities;
 
 /* Optional: set Inter as default */
-body {
-  @apply font-inter;
+@layer base{
+  body{
+    @apply font-inter
+  }
+  h1{
+    @apply text-2xl md:text-3xl lg:text-[40px] text-primary font-bold
+  }
+  hr{
+    @apply h-0.5 bg-[#EDEDED] w-full border-0 
+  }
+  section {
+    @apply space-y-3
+  }
+  h2{
+    @apply text-base md:text-lg lg:text-xl text-primary font-bold
+  }
+  option {
+    @apply rounded-3xl
+  }
 }
+
+@layer components {
+  .inputStyle {
+    @apply bg-white placeholder:text-[#848282] shadow-md p-2.5 py-3 rounded-md w-full text-base;
+  }
+}
+
