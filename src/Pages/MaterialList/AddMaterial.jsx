@@ -31,7 +31,7 @@ const PrimaryInput = ({ type, value, onChange, placeholder }) => {
 
 const AddMaterial = () => {
   const navigate = useNavigate();
-  const { id } = useParams(); // used for edit mode
+  const { id } = useParams(); 
   const isEdit = Boolean(id);
 
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
