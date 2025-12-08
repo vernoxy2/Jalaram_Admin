@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, Outlet } from "react-router-dom";
-import { collection, getDocs, } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useNavigate } from "react-router-dom";
 import Addbtn from "../../Components/Addbtn";
@@ -183,7 +183,8 @@ const MaterialList = () => {
               <th className="px-4 py-2 border-r-2">Paper Code</th>
               <th className="px-4 py-2 border-r-2">Company</th>
               <th className="px-4 py-2 border-r-2">Material Type</th>
-              <th className="px-4 py-2 border-r-2">Total Meter</th>
+              <th className="px-4 py-2 border-r-2">Total Running Meter</th>
+              <th className="px-4 py-2 border-r-2">Available Running Meter</th>
               <th className="px-4 py-2 ">Action</th>
             </tr>
           </thead>
@@ -207,13 +208,19 @@ const MaterialList = () => {
                 </td>
                 <td className="border px-4 py-2">{item.jobPaper || "-"}</td>
                 <td className="border px-4 py-2">{item.totalRunningMeter}</td>
+                <td className="border px-4 py-2">
+                  {item.availableRunningMeter}
+                </td>
                 <td className="border py-2 text-center space-x-2">
-                  <button
-                    onClick={() => navigate(`edit/${item.id}`)}
-                    className="bg-[#D2D2D2] text-primary p-1 rounded text-2xl"
-                  >
-                    <RiPencilFill />
-                  </button>
+                  {item.materialCategory === "RAW" &&
+                  item.availableRunningMeter > 0 ? (
+                    <button
+                      onClick={() => navigate(`edit/${item.id}`)}
+                      className="bg-[#D2D2D2] text-primary p-1 rounded text-2xl"
+                    >
+                      <RiPencilFill />
+                    </button>
+                  ) : null}
                 </td>
               </tr>
             ))}

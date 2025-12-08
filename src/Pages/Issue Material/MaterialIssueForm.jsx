@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "../../firebase";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import PrimaryBtn from "../../Components/PrimaryBtn";
 import {
   doc,
@@ -10,11 +10,15 @@ import {
   query,
   where,
   updateDoc,
+  addDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { FaCaretRight } from "react-icons/fa6";
-import { paperProductCodeData } from "../../utils/constant";
+import { materialTypeList, paperProductCodeData } from "../../utils/constant";
 
 const MaterialIssueForm = () => {
+  const navigate = useNavigate();
+
   const [selectedRolls, setSelectedRolls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,24 +29,17 @@ const MaterialIssueForm = () => {
     jobName: "",
     paperSize: "",
     requestedMaterial: "",
-    materialType: "",
-    companyName: "",
     requestDate: "",
     alloteDate: "",
   });
+
+  // ✅ CHANGED: Separate states for dropdowns
+  const [jobPaper, setJobPaper] = useState("");
   const [paperProductCode, setPaperProductCode] = useState("");
 
-  const LO = [{ id: 1, paperCode: "P101", availableMeter: 1000, rack: "R1" }];
-  const WIP = [
-    {
-      id: 2,
-      paperCode: "W202",
-      availableMeter: 800,
-      rack: "S2",
-      stage: "Printing",
-    },
-  ];
-
+  // ✅ Separate states for LO, WIP, RAW
+  const [LO, setLO] = useState([]);
+  const [WIP, setWIP] = useState([]);
   const [RAW, setRAW] = useState([]);
 
   const { id } = useParams();
@@ -78,11 +75,15 @@ const MaterialIssueForm = () => {
             paperSize: data.paperSize || "",
             requestedMaterial:
               data.requiredMaterial || data.requestedMaterial || "",
-            materialType: data.materialType || "",
-            companyName: data.companyName || "",
             requestDate: requestDate,
             alloteDate: new Date().toISOString().split("T")[0],
           });
+
+          // ✅ Set dropdown values from request data
+          setJobPaper(data.jobPaper?.value || data.jobPaper || "");
+          setPaperProductCode(
+            data.paperProductCode?.value || data.paperProductCode || ""
+          );
         } else {
           setError("Request not found");
         }
@@ -97,33 +98,74 @@ const MaterialIssueForm = () => {
     fetchRequest();
   }, [id]);
 
-  /* -------------------------------------------------------------
-     2) FETCH MATCHING MATERIALS BASED ON formData
-  --------------------------------------------------------------- */
   useEffect(() => {
-    if (!formData.companyName || !formData.materialType || !formData.paperSize)
-      return;
+    if (!paperProductCode || !jobPaper || !formData.paperSize) return;
 
-    const fetchRawMaterials = async () => {
+    const fetchMaterials = async () => {
       setLoadingMaterials(true);
-      try {
-        const q = query(
-          collection(db, "materials"),
-          where("paperProductCode", "==", formData.companyName),
-          where("jobPaper", "==", formData.materialType),
-          where("paperSize", "==", Number(formData.paperSize))
-        );
-        const snapshot = await getDocs(q);
 
-        const list = snapshot.docs.map((doc) => ({
+      try {
+        const stringPaperSize = String(formData.paperSize);
+        const numberPaperSize = Number(formData.paperSize);
+
+        const baseConditions = [
+          where("paperProductCode", "==", paperProductCode),
+          where("jobPaper", "==", jobPaper),
+          where("paperSize", "in", [stringPaperSize, numberPaperSize]),
+          where("isActive", "==", true),
+        ];
+
+        const rawQuery = query(
+          collection(db, "materials"),
+          ...baseConditions,
+          where("materialCategory", "==", "RAW")
+        );
+
+        const rawSnapshot = await getDocs(rawQuery);
+        const rawList = rawSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
           paperCode: doc.data().paperCode,
-          availableMeter: doc.data().totalRunningMeter,
+          availableMeter: doc.data().availableRunningMeter || 0,
           rack: doc.data().rack || "N/A",
         }));
 
-        setRAW(list);
+        const loQuery = query(
+          collection(db, "materials"),
+          ...baseConditions,
+          where("materialCategory", "==", "LO")
+        );
+
+        const loSnapshot = await getDocs(loQuery);
+        const loList = loSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          paperCode: doc.data().paperCode,
+          availableMeter: doc.data().availableRunningMeter || 0,
+          rack: doc.data().rack || "N/A",
+          sourceJobCardNo: doc.data().sourceJobCardNo,
+        }));
+
+        const wipQuery = query(
+          collection(db, "materials"),
+          ...baseConditions,
+          where("materialCategory", "==", "WIP")
+        );
+
+        const wipSnapshot = await getDocs(wipQuery);
+        const wipList = wipSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          paperCode: doc.data().paperCode,
+          availableMeter: doc.data().availableRunningMeter || 0,
+          rack: doc.data().rack || "N/A",
+          stage: doc.data().sourceStage || "Unknown",
+          sourceJobCardNo: doc.data().sourceJobCardNo,
+        }));
+
+        setRAW(rawList);
+        setLO(loList);
+        setWIP(wipList);
       } catch (error) {
         console.error("Error fetching materials:", error);
       } finally {
@@ -131,8 +173,8 @@ const MaterialIssueForm = () => {
       }
     };
 
-    fetchRawMaterials();
-  }, [formData.companyName, formData.materialType, formData.paperSize]);
+    fetchMaterials();
+  }, [paperProductCode, jobPaper, formData.paperSize]);
 
   /* -------------------------------------------------------------
      3) HANDLE SELECT / ISSUE METER CHANGE  
@@ -176,20 +218,97 @@ const MaterialIssueForm = () => {
       return;
     }
 
-    try {
-      for (const roll of selectedRolls) {
-        const newMeter = roll.totalRunningMeter - Number(roll.issuedMeter);
+    // ✅ VALIDATION: Prevent issuing more than available stock
+    const invalidRolls = selectedRolls.filter(
+      (roll) => Number(roll.issuedMeter) > roll.availableMeter
+    );
 
+    if (invalidRolls.length > 0) {
+      alert(
+        `Cannot issue more than available stock for: ${invalidRolls
+          .map((r) => r.paperCode)
+          .join(", ")}`
+      );
+      return;
+    }
+
+    try {
+      // ---------------------------------------------------------
+      // ✅ STEP 1 — Deduct stock + create transactions
+      // ---------------------------------------------------------
+      for (const roll of selectedRolls) {
+        const issuedQty = Number(roll.issuedMeter);
+        const newAvailableMeter = roll.availableMeter - issuedQty;
+
+        // UPDATE MATERIAL STOCK
         await updateDoc(doc(db, "materials", roll.id), {
-          totalRunningMeter: newMeter,
+          availableRunningMeter: newAvailableMeter,
+          isActive: newAvailableMeter > 0,
           updatedAt: new Date(),
+        });
+
+        // CREATE TRANSACTION RECORD
+        await addDoc(collection(db, "materialTransactions"), {
+          transactionType: "issue",
+          transactionDate: serverTimestamp(),
+          jobCardNo: formData.jobCardNo,
+          paperCode: roll.paperCode,
+          paperProductCode: roll.paperProductCode,
+          materialCategory: roll.materialCategory || "RAW",
+          usedQty: issuedQty,
+          wasteQty: 0,
+          loQty: 0,
+          wipQty: 0,
+          stage: null,
+          newPaperCode: null,
+          newMaterialId: null,
+          createdBy: "Admin",
+          remarks: `Issued ${issuedQty}m for job ${formData.jobCardNo}`,
         });
       }
 
+      // ---------------------------------------------------------
+      // ✅ STEP 2 — Get previous issued/remaining values
+      // ---------------------------------------------------------
+      const reqRef = doc(db, "materialRequest", id);
+      const reqSnap = await getDoc(reqRef);
+
+      let prevIssued = 0;
+      let requestedMeter = Number(formData.requestedMaterial || 0);
+
+      if (reqSnap.exists()) {
+        prevIssued = Number(reqSnap.data().issuedMeter || 0);
+      }
+
+      // ---------------------------------------------------------
+      // ✅ STEP 3 — Add new issue to previous issue
+      // ---------------------------------------------------------
+      const newIssuedTotal = prevIssued + totalIssued;
+
+      let remainingMeter = requestedMeter - newIssuedTotal;
+      if (remainingMeter < 0) remainingMeter = 0;
+
+      const isIssued = newIssuedTotal >= requestedMeter;
+
+      // ---------------------------------------------------------
+      // ✅ STEP 4 — Update materialRequest document
+      // ---------------------------------------------------------
+      await updateDoc(reqRef, {
+        issuedMeter: newIssuedTotal,
+        remainingMeter: remainingMeter,
+        isIssued: isIssued,
+        updatedAt: new Date(),
+      });
+
+      // ---------------------------------------------------------
+      // SUCCESS
+      // ---------------------------------------------------------
       alert("Material issued successfully!");
       setSelectedRolls([]);
+
+      setTimeout(() => navigate("/issue_material"), 900);
     } catch (err) {
-      console.error(err);
+      console.error("Error issuing material:", err);
       alert("Error issuing material");
     }
   };
@@ -265,48 +384,48 @@ const MaterialIssueForm = () => {
             name="paperSize"
             value={formData.paperSize}
             onChange={handleChange}
-            // readOnly
           />
           <Input
             label="Requested Material"
             name="requestedMaterial"
             value={formData.requestedMaterial}
             onChange={handleChange}
-            // readOnly
-          />
-          <Input
-            label="Material Type"
-            name="materialType"
-            value={formData.materialType}
-            onChange={handleChange}
-            // readOnly
           />
 
+          {/* ✅ Material Type Dropdown */}
+          <select
+            className="inputStyle"
+            value={jobPaper}
+            onChange={(e) => setJobPaper(e.target.value)}
+          >
+            <option value="">Select Material Type</option>
+            {materialTypeList.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+
+          {/* ✅ Company Name Dropdown */}
           <select
             className="inputStyle"
             value={paperProductCode}
-            onChange={(e) => {
-              setPaperProductCode(e.target.value);
-              // setErrors((prev) => ({ ...prev, paperProductCode: "" }));
-            }}
-            // disabled={isEdit}
+            onChange={(e) => setPaperProductCode(e.target.value)}
           >
-            <option disabled value="">
-              Select Company Name
-            </option>
+            <option value="">Select Company Name</option>
             {paperProductCodeData.map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
               </option>
             ))}
           </select>
+
           <Input
             label="Request Date"
             type="date"
             name="requestDate"
             value={formData.requestDate}
             onChange={handleChange}
-            // readOnly
           />
           <Input
             label="Allote Date"
@@ -462,6 +581,9 @@ const MaterialTable = ({
           <th className="p-2 border">Available Meter</th>
 
           {title.includes("WIP") && <th className="p-2 border">Stage</th>}
+          {(title.includes("WIP") || title.includes("LO")) && (
+            <th className="p-2 border">Source Job</th>
+          )}
 
           <th className="p-2 border">Rack</th>
           <th className="p-2 border">Issue Meter</th>
@@ -472,7 +594,7 @@ const MaterialTable = ({
         {data.length === 0 ? (
           <tr>
             <td
-              colSpan={title.includes("WIP") ? 6 : 5}
+              colSpan={title.includes("WIP") ? 7 : title.includes("LO") ? 6 : 5}
               className="p-4 text-gray-500"
             >
               No materials available
@@ -497,7 +619,12 @@ const MaterialTable = ({
                 <td className="p-2 border">{roll.availableMeter}</td>
 
                 {title.includes("WIP") && (
-                  <td className="p-2 border">{roll.stage}</td>
+                  <td className="p-2 border capitalize">{roll.stage}</td>
+                )}
+                {(title.includes("WIP") || title.includes("LO")) && (
+                  <td className="p-2 border">
+                    {roll.sourceJobCardNo || "N/A"}
+                  </td>
                 )}
 
                 <td className="p-2 border">{roll.rack}</td>
@@ -510,6 +637,7 @@ const MaterialTable = ({
                     value={selectedRoll?.issuedMeter || ""}
                     onChange={(e) => onMeterChange(roll.id, e.target.value)}
                     placeholder="meter"
+                    max={roll.availableMeter}
                   />
                 </td>
               </tr>

@@ -162,6 +162,7 @@ const MaterialIssueRequestList = () => {
               <th className="px-4 py-2 border-r-2">Job Name</th>
               <th className="px-4 py-2 border-r-2">Request Date</th>
               <th className="px-4 py-2 border-r-2">Required Material</th>
+              <th className="px-4 py-2 border-r-2">Issued Material</th>
               <th className="px-4 py-2 border-r-2">Request By</th>
               <th className="px-4 py-2">Action</th>
             </tr>
@@ -180,9 +181,11 @@ const MaterialIssueRequestList = () => {
                     : ""}
                 </td>
                 <td className="border px-4 py-2">{item.requiredMaterial}</td>
+                <td className="border px-4 py-2">{item.issuedMeter ? item.issuedMeter : 0}</td>
                 <td className="border px-4 py-2">{item.createdBy}</td>
 
                 <td className="border px-4 py-2">
+                  {!item.isIssued ?
                   <button
                     className="bg-primary text-white px-3 py-1 rounded-lg"
                     // onClick={() => navigate(`${item.id}`)}
@@ -190,6 +193,7 @@ const MaterialIssueRequestList = () => {
                   >
                     Issue Now
                   </button>
+                   : <></>}
                 </td>
               </tr>
             ))}

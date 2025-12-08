@@ -9,6 +9,7 @@ import AdminLayout from "./Components/Layout/AdminLayout";
 import Dashboard from "./Pages/Dashboard";
 import MaterialIssueForm from "./Pages/Issue Material/MaterialIssueForm";
 import MaterialIssueRequestList from "./Pages/Issue Material/MaterialIssueRequestList";
+import Stock from "./Pages/StockDetail/Stock";
 
 const App = () => {
   return (
@@ -48,7 +49,7 @@ const App = () => {
           <Route path="total_inventory" element={<Dashboard />} />
 
           {/* Stock */}
-          <Route path="stock" element={<Dashboard />} />
+          <Route path="stock" element={<Stock />} />
         </Route>
       </Routes>
     </Router>
