@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { companyList, materialTypeList } from "../../utils/constant";
+import { materialTypeList, paperProductCodeData } from "../../utils/constant";
 import {
   collection,
   addDoc,
@@ -31,14 +31,19 @@ const PrimaryInput = ({ type, value, onChange, placeholder }) => {
 
 const AddMaterial = () => {
   const navigate = useNavigate();
-  const { id } = useParams(); // used for edit mode
+  const { id } = useParams(); 
   const isEdit = Boolean(id);
 
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
 
-  const [companyName, setCompanyName] = useState("");
-  const [materialType, setMaterialType] = useState("");
+  // const [companyName, setCompanyName] = useState("");
+  const [paperProductCode, setPaperProductCode] = useState("");
+  const [jobPaper, setJobPaper] = useState("");
+
+  // const [materialType, setMaterialType] = useState("");
   const [rows, setRows] = useState([{ runningMeter: "", roll: "", total: "" }]);
+  const [paperSize, setPaperSize] = useState("");
+  const [errors, setErrors] = useState({});
 
   /* ---------------------------------------------------
      LOAD DATA IN EDIT MODE
@@ -52,13 +57,14 @@ const AddMaterial = () => {
 
       if (snapshot.exists()) {
         const data = snapshot.data();
-        setCompanyName(data.companyName);
-        setMaterialType(data.materialType);
+        setPaperProductCode(data.paperProductCode);
+        setJobPaper(data.jobPaper);
         setDate(
           data.date?.seconds
             ? new Date(data.date.seconds * 1000).toISOString().split("T")[0]
             : ""
         );
+        setPaperSize(data.paperSize || "");
 
         setRows([
           {
@@ -102,21 +108,30 @@ const AddMaterial = () => {
   --------------------------------------------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const newErrors = {};
 
-    if (!companyName) {
-      alert("Please select company");
-      return;
+    if (!paperProductCode) {
+      newErrors.paperProductCode = "Please select company name";
     }
 
-    // 🔥 FILTER ONLY VALID ROWS
+    if (!jobPaper) {
+      newErrors.jobPaper = "Please select material type";
+    }
+
     const validRows = rows.filter(
       (r) => r.runningMeter !== "" && r.roll !== ""
     );
 
     if (validRows.length === 0) {
-      alert("Please enter at least one valid row");
+      newErrors.rows = "Please enter at least one valid row";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
+
+    setErrors({}); // Clear errors if validation passes
 
     try {
       /* --------------------------
@@ -128,7 +143,7 @@ const AddMaterial = () => {
         // Company should not change in edit mode
         await updateDoc(doc(db, "materials", id), {
           // companyName, ← REMOVE this to prevent change
-          materialType,
+          jobPaper,
           runningMeter: Number(row.runningMeter),
           roll: Number(row.roll),
           totalRunningMeter: Number(row.total),
@@ -136,7 +151,7 @@ const AddMaterial = () => {
           updatedAt: serverTimestamp(),
         });
 
-        navigate("/material");
+        navigate("/material_in");
         return;
       }
 
@@ -145,7 +160,7 @@ const AddMaterial = () => {
     -------------------------- */
       for (const row of validRows) {
         // Take first TWO letters of companyName, uppercase, then add "P"
-        const prefix = `${companyName
+        const prefix = `${paperProductCode
           .slice(0, 2)
           .toUpperCase()}P${moment().format("YY")}-`;
 
@@ -172,8 +187,9 @@ const AddMaterial = () => {
         const paperCode = `${prefix}${nextNumber}`;
 
         await addDoc(collection(db, "materials"), {
-          companyName,
-          materialType,
+          paperProductCode,
+          jobPaper,
+          paperSize,
           runningMeter: Number(row.runningMeter),
           roll: Number(row.roll),
           totalRunningMeter: Number(row.total),
@@ -185,8 +201,7 @@ const AddMaterial = () => {
         });
       }
 
-      alert("Material added successfully");
-      navigate("/material");
+      setTimeout(() => navigate("/material_in"), 900);
     } catch (error) {
       console.error(error);
       alert("Error while saving!");
@@ -207,38 +222,64 @@ const AddMaterial = () => {
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
-            
+
             {/* COMPANY */}
-            <select
-              className="inputStyle"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              disabled={isEdit}
-            >
-              <option disabled value="">Select Company Name</option>
-              {companyList.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
+            <div>
+              <select
+                className="inputStyle"
+                value={paperProductCode}
+                onChange={(e) => {
+                  setPaperProductCode(e.target.value);
+                  setErrors((prev) => ({ ...prev, paperProductCode: "" }));
+                }}
+                disabled={isEdit}
+              >
+                <option disabled value="">
+                  Select Company Name
                 </option>
-              ))}
-            </select>
-
+                {paperProductCodeData.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+              {errors.paperProductCode && (
+                <p className="text-red-600 text-sm">
+                  {errors.paperProductCode}
+                </p>
+              )}
+            </div>
             {/* MATERIAL TYPE */}
-            <select
-              className="inputStyle"
-              value={materialType}
-              onChange={(e) => setMaterialType(e.target.value)}
-            >
-              <option disabled value="">Select Material Type</option>
-              {materialTypeList.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
+            <div>
+              <select
+                className="inputStyle"
+                value={jobPaper}
+                // onChange={(e) => setJobPaper(e.target.value)}
+                onChange={(e) => {
+                  setJobPaper(e.target.value);
+                  setErrors((prev) => ({ ...prev, jobPaper: "" }));
+                }}
+              >
+                <option disabled value="">
+                  Select Material Type
                 </option>
-              ))}
-            </select>
-
+                {materialTypeList.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+              {errors.jobPaper && (
+                <p className="text-red-600 text-sm">{errors.jobPaper}</p>
+              )}
+            </div>
             {/* Paper Size */}
-            <PrimaryInput type="number" placeholder="Paper Size" />
+            <PrimaryInput
+              type="number"
+              placeholder="Paper Size"
+              value={paperSize}
+              onChange={(e) => setPaperSize(e.target.value)}
+            />
           </div>
           <hr />
 
@@ -292,6 +333,9 @@ const AddMaterial = () => {
               </div>
             ))}
 
+            {errors.rows && (
+              <p className="text-red-600 text-sm">{errors.rows}</p>
+            )}
             {!isEdit && (
               // <button
               //   type="button"

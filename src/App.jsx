@@ -39,7 +39,7 @@ const App = () => {
           {/* Material Issue */}
           <Route path="issue_material">
             <Route index element={<MaterialIssueRequestList />} />
-            <Route path=":rollId" element={<MaterialIssueForm />} />
+            <Route path=":id" element={<MaterialIssueForm />} />
           </Route>
 
           {/* Dispatch */}
