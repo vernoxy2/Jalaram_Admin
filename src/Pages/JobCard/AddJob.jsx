@@ -35,6 +35,7 @@ import {
 } from "../../utils/constant";
 import { startTransition } from "react";
 import PrimaryBtn from "../../Components/PrimaryBtn";
+import PrimaryBackBtn from "../../Components/PrimaryBackBtn";
 
 const db = getFirestore(getApp()); // assumes firebase app already initialized
 
@@ -770,6 +771,9 @@ const AddJob = () => {
         >
           Submit
         </PrimaryBtn>
+        <PrimaryBackBtn to={"/jobcard"} className="w-full">
+          Back
+        </PrimaryBackBtn>
 
         {message && (
           <div className="mt-4 text-green-600 font-bold text-lg">{message}</div>

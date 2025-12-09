@@ -232,7 +232,7 @@ const JobCard = () => {
             {currentItems.map((job) => (
               <tr
                 key={job.id}
-                onClick={() => navigate(`/jobDetailScreen/${job.id}`)}
+                onClick={() => navigate(`detail/${job.id}`)}
                 className="cursor-pointer hover:bg-gray-100 text-center"
               >
                 <td className="border px-4 py-2">{job.jobCardNo}</td>

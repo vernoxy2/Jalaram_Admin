@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../../firebase";
 import { format } from "date-fns";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 // import { ht } from "date-fns/locale";
 
-const AdminJobDetailsScreen = () => {
+const JobDetailsScreen = () => {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -592,14 +592,15 @@ const AdminJobDetailsScreen = () => {
     : "";
 
   return (
-    <div className="min-h-screen bg-gray-100 py-10 px-5">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-8 text-[#3668B1]">
+    <div className="min-h-screen space-y-5 max-w-screen">
+        <h1>
           Job Details
         </h1>
+        <hr />
+      <div className="rounded-2xl mx-auto bg-gray-100 py-16 px-5">
 
         {/* Simple View for Screen Display */}
-        <div className="bg-white shadow-md rounded-xl p-6 mb-6">
+        <div className="bg-white shadow-md rounded-xl p-6 mb-6 max-w-5xl mx-auto">
           <div className="space-y-4">
             <div className="border-b pb-3">
               <p className="text-gray-500 text-sm">Job Card No</p>
@@ -1065,7 +1066,7 @@ const AdminJobDetailsScreen = () => {
         <div className="flex gap-4 justify-center mt-6">
           <button
             onClick={generatePDF}
-            className="bg-green-600 hover:bg-green-700 text-white py-3 px-8 rounded-lg font-semibold transition"
+            className="bg-gradient-to-t from-green-800 to-green-600 text-white py-3 hover:scale-95 duration-300 transition-transform px-8 rounded-lg font-semibold "
           >
             Share PDF
           </button>
@@ -1101,13 +1102,13 @@ const AdminJobDetailsScreen = () => {
 
           <button
             onClick={savePDF}
-            className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-8 rounded-lg font-semibold transition"
+            className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] hover:scale-95 text-white py-3 px-8 rounded-lg font-semibold transition"
           >
             Download PDF
           </button>
 
           <Link to="/jobcard">
-            <button className="bg-[#3668B1] hover:bg-[#2a5296] text-white py-3 px-8 rounded-lg font-semibold transition">
+            <button className="bg-gradient-to-t from-black/20 to-white hover:scale-95 text-primary  py-3 px-8 rounded-lg font-semibold transition">
               Back
             </button>
           </Link>
@@ -1117,4 +1118,4 @@ const AdminJobDetailsScreen = () => {
   );
 };
 
-export default AdminJobDetailsScreen;
+export default JobDetailsScreen;
