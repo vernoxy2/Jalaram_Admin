@@ -7,7 +7,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 // import { ht } from "date-fns/locale";
 
-const AdminJobDetailsScreen = () => {
+const JobDetailsScreen = () => {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1118,4 +1118,4 @@ const AdminJobDetailsScreen = () => {
   );
 };
 
-export default AdminJobDetailsScreen;
+export default JobDetailsScreen;

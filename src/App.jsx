@@ -4,12 +4,12 @@ import MaterialList from "./Pages/MaterialList/MaterialList";
 import AddMaterial from "./Pages/MaterialList/AddMaterial";
 import JobCard from "./Pages/JobCard/JobCard";
 import AddJob from "./Pages/JobCard/AddJob";
-import JobDetailScreen from "./Components/JobDetailScreen";
 import AdminLayout from "./Components/Layout/AdminLayout";
 import Dashboard from "./Pages/Dashboard";
 import MaterialIssueForm from "./Pages/Issue Material/MaterialIssueForm";
 import MaterialIssueRequestList from "./Pages/Issue Material/MaterialIssueRequestList";
 import AdminJobDetailsScreen from "./Pages/JobCard/JobDetailScreen";
+import JobDetailsScreen from "./Pages/JobCard/JobDetailScreen";
 
 const App = () => {
   return (
@@ -26,7 +26,7 @@ const App = () => {
             <Route index element={<JobCard />} />
             <Route path="addjob" element={<AddJob />} />
             <Route path="edit/:id" element={<AddJob />} />
-            <Route path="detail/:id" element={<AdminJobDetailsScreen   />} />
+            <Route path="detail/:id" element={<JobDetailsScreen/>} />
           </Route>
 
           {/* Material Routes */}
