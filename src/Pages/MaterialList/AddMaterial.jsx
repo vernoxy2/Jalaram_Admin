@@ -31,19 +31,16 @@ const PrimaryInput = ({ type, value, onChange, placeholder }) => {
 
 const AddMaterial = () => {
   const navigate = useNavigate();
-  const { id } = useParams(); 
+  const { id } = useParams();
   const isEdit = Boolean(id);
 
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-
-  // const [companyName, setCompanyName] = useState("");
   const [paperProductCode, setPaperProductCode] = useState("");
   const [jobPaper, setJobPaper] = useState("");
-
-  // const [materialType, setMaterialType] = useState("");
   const [rows, setRows] = useState([{ runningMeter: "", roll: "", total: "" }]);
   const [paperSize, setPaperSize] = useState("");
   const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState("");
 
   /* ---------------------------------------------------
      LOAD DATA IN EDIT MODE
@@ -96,6 +93,7 @@ const AddMaterial = () => {
   const addRow = () => {
     setRows([...rows, { runningMeter: "", roll: "", total: "" }]);
   };
+
   const removeRow = (index) => {
     const updated = rows.filter((_, i) => i !== index);
     setRows(
@@ -131,22 +129,24 @@ const AddMaterial = () => {
       return;
     }
 
-    setErrors({}); // Clear errors if validation passes
+    setErrors({});
 
     try {
       /* --------------------------
        EDIT MODE
     -------------------------- */
       if (isEdit) {
-        const row = validRows[0]; // Only first row used for edit
+        const row = validRows[0];
 
-        // Company should not change in edit mode
+        // ⚠️ In edit mode, we update totalRunningMeter and availableRunningMeter
+        // Only if this is a RAW material that hasn't been issued yet
         await updateDoc(doc(db, "materials", id), {
-          // companyName, ← REMOVE this to prevent change
           jobPaper,
           runningMeter: Number(row.runningMeter),
           roll: Number(row.roll),
           totalRunningMeter: Number(row.total),
+          // ✅ NEW: Update availableRunningMeter (only if not already issued)
+          availableRunningMeter: Number(row.total),
           date: new Date(date),
           updatedAt: serverTimestamp(),
         });
@@ -159,7 +159,7 @@ const AddMaterial = () => {
        ADD NEW MATERIALS
     -------------------------- */
       for (const row of validRows) {
-        // Take first TWO letters of companyName, uppercase, then add "P"
+        // Generate paper code
         const prefix = `${paperProductCode
           .slice(0, 2)
           .toUpperCase()}P${moment().format("YY")}-`;
@@ -186,6 +186,7 @@ const AddMaterial = () => {
         const nextNumber = String(maxNumber + 1).padStart(3, "0");
         const paperCode = `${prefix}${nextNumber}`;
 
+        // ✅ NEW: Add new fields for stock management
         await addDoc(collection(db, "materials"), {
           paperProductCode,
           jobPaper,
@@ -193,6 +194,17 @@ const AddMaterial = () => {
           runningMeter: Number(row.runningMeter),
           roll: Number(row.roll),
           totalRunningMeter: Number(row.total),
+
+          // ✅ NEW FIELDS:
+          availableRunningMeter: Number(row.total), // Initially same as total
+          materialCategory: "RAW", // All new materials are RAW
+          isActive: true, // Active by default
+
+          // ✅ Source tracking (null for RAW materials)
+          sourceJobCardNo: null,
+          sourcePaperCode: null,
+          sourceStage: null,
+
           paperCode,
           date: new Date(date),
           createdAt: serverTimestamp(),
@@ -200,7 +212,7 @@ const AddMaterial = () => {
           createdBy: "Admin",
         });
       }
-
+      setMessage("Materials added successfully!");
       setTimeout(() => navigate("/material_in"), 900);
     } catch (error) {
       console.error(error);
@@ -249,12 +261,12 @@ const AddMaterial = () => {
                 </p>
               )}
             </div>
+
             {/* MATERIAL TYPE */}
             <div>
               <select
                 className="inputStyle"
                 value={jobPaper}
-                // onChange={(e) => setJobPaper(e.target.value)}
                 onChange={(e) => {
                   setJobPaper(e.target.value);
                   setErrors((prev) => ({ ...prev, jobPaper: "" }));
@@ -273,6 +285,7 @@ const AddMaterial = () => {
                 <p className="text-red-600 text-sm">{errors.jobPaper}</p>
               )}
             </div>
+
             {/* Paper Size */}
             <PrimaryInput
               type="number"
@@ -320,7 +333,6 @@ const AddMaterial = () => {
                   readOnly
                 />
 
-                {/* DELETE BUTTON */}
                 {!isEdit && (
                   <button
                     type="button"
@@ -336,21 +348,16 @@ const AddMaterial = () => {
             {errors.rows && (
               <p className="text-red-600 text-sm">{errors.rows}</p>
             )}
-            {!isEdit && (
-              // <button
-              //   type="button"
-              //   onClick={addRow}
-              //   className="text-blue-600 font-bold underline text-left"
-              // >
-              //   + Add Row
-              // </button>
-              <Addbtn onClick={addRow}>Add Row</Addbtn>
-            )}
+            {!isEdit && <Addbtn onClick={addRow}>Add Row</Addbtn>}
 
-            {/* SUBMIT */}
             <PrimaryBtn className="w-full" type="submit">
               {isEdit ? "Update" : "Submit"}
             </PrimaryBtn>
+            {message && (
+              <div className="mt-4 text-green-600 font-bold text-lg">
+                {message}
+              </div>
+            )}
           </div>
         </form>
       </div>
