@@ -33,11 +33,9 @@ const MaterialIssueForm = () => {
     alloteDate: "",
   });
 
-  // ✅ CHANGED: Separate states for dropdowns
   const [jobPaper, setJobPaper] = useState("");
   const [paperProductCode, setPaperProductCode] = useState("");
 
-  // ✅ Separate states for LO, WIP, RAW
   const [LO, setLO] = useState([]);
   const [WIP, setWIP] = useState([]);
   const [RAW, setRAW] = useState([]);
@@ -69,17 +67,22 @@ const MaterialIssueForm = () => {
                 .split("T")[0]
             : data.requestDate || "";
 
+          // ✅ Calculate remaining material correctly
+          const totalRequired = Number(
+            data.requiredMaterial || data.requestedMaterial || 0
+          );
+          const alreadyIssued = Number(data.issuedMeter || 0);
+          const remaining = totalRequired - alreadyIssued;
+
           setFormData({
             jobCardNo: data.jobCardNo || "",
             jobName: data.jobName || "",
             paperSize: data.paperSize || "",
-            requestedMaterial:
-              data.requiredMaterial || data.requestedMaterial || "",
+            requestedMaterial: remaining > 0 ? remaining : 0,
             requestDate: requestDate,
             alloteDate: new Date().toISOString().split("T")[0],
           });
 
-          // ✅ Set dropdown values from request data
           setJobPaper(data.jobPaper?.value || data.jobPaper || "");
           setPaperProductCode(
             data.paperProductCode?.value || data.paperProductCode || ""
@@ -210,7 +213,7 @@ const MaterialIssueForm = () => {
   );
 
   /* -------------------------------------------------------------
-     4) ISSUE MATERIAL & SUBTRACT STOCK IN FIRESTORE
+     4) ISSUE MATERIAL & SUBTRACT STOCK IN FIRESTORE + UPDATE ORDER
   --------------------------------------------------------------- */
   const handleIssue = async () => {
     if (selectedRolls.length === 0) {
@@ -218,7 +221,6 @@ const MaterialIssueForm = () => {
       return;
     }
 
-    // ✅ VALIDATION: Prevent issuing more than available stock
     const invalidRolls = selectedRolls.filter(
       (roll) => Number(roll.issuedMeter) > roll.availableMeter
     );
@@ -233,21 +235,17 @@ const MaterialIssueForm = () => {
     }
 
     try {
-      // ---------------------------------------------------------
-      // ✅ STEP 1 — Deduct stock + create transactions
-      // ---------------------------------------------------------
+      // STEP 1: Deduct stock + create transactions
       for (const roll of selectedRolls) {
         const issuedQty = Number(roll.issuedMeter);
         const newAvailableMeter = roll.availableMeter - issuedQty;
 
-        // UPDATE MATERIAL STOCK
         await updateDoc(doc(db, "materials", roll.id), {
           availableRunningMeter: newAvailableMeter,
           isActive: newAvailableMeter > 0,
           updatedAt: new Date(),
         });
 
-        // CREATE TRANSACTION RECORD
         await addDoc(collection(db, "materialTransactions"), {
           transactionType: "issue",
           transactionDate: serverTimestamp(),
@@ -267,32 +265,30 @@ const MaterialIssueForm = () => {
         });
       }
 
-      // ---------------------------------------------------------
-      // ✅ STEP 2 — Get previous issued/remaining values
-      // ---------------------------------------------------------
+      // STEP 2: Get previous issued/remaining values
       const reqRef = doc(db, "materialRequest", id);
       const reqSnap = await getDoc(reqRef);
 
       let prevIssued = 0;
-      let requestedMeter = Number(formData.requestedMaterial || 0);
+      let originalRequestedMeter = 0;
 
       if (reqSnap.exists()) {
-        prevIssued = Number(reqSnap.data().issuedMeter || 0);
+        const reqData = reqSnap.data();
+        prevIssued = Number(reqData.issuedMeter || 0);
+        originalRequestedMeter = Number(
+          reqData.requiredMaterial || reqData.requestedMaterial || 0
+        );
       }
 
-      // ---------------------------------------------------------
-      // ✅ STEP 3 — Add new issue to previous issue
-      // ---------------------------------------------------------
+      // STEP 3: Calculate new totals
       const newIssuedTotal = prevIssued + totalIssued;
-
-      let remainingMeter = requestedMeter - newIssuedTotal;
+      let remainingMeter = originalRequestedMeter - newIssuedTotal;
       if (remainingMeter < 0) remainingMeter = 0;
 
-      const isIssued = newIssuedTotal >= requestedMeter;
+      // ✅ FIX: Only mark as issued when fully allocated
+      const isIssued = newIssuedTotal >= originalRequestedMeter;
 
-      // ---------------------------------------------------------
-      // ✅ STEP 4 — Update materialRequest document
-      // ---------------------------------------------------------
+      // STEP 4: Update materialRequest document
       await updateDoc(reqRef, {
         issuedMeter: newIssuedTotal,
         remainingMeter: remainingMeter,
@@ -300,16 +296,97 @@ const MaterialIssueForm = () => {
         updatedAt: new Date(),
       });
 
-      // ---------------------------------------------------------
-      // SUCCESS
-      // ---------------------------------------------------------
-      alert("Material issued successfully!");
+      // STEP 5: Group materials by paperProductCode
+      const groupedMaterials = {};
+
+      selectedRolls.forEach((roll) => {
+        const code = roll.paperProductCode;
+
+        if (!groupedMaterials[code]) {
+          groupedMaterials[code] = {
+            paperProductCode: code,
+            paperCodes: [],
+            totalQty: 0,
+            materialCategory: roll.materialCategory || "RAW",
+          };
+        }
+
+        groupedMaterials[code].paperCodes.push(roll.paperCode);
+        groupedMaterials[code].totalQty += Number(roll.issuedMeter);
+      });
+
+      // STEP 6: Update ordersTest with allocated materials
+      const ordersQuery = query(
+        collection(db, "ordersTest"),
+        where("jobCardNo", "==", formData.jobCardNo)
+      );
+
+      const ordersSnapshot = await getDocs(ordersQuery);
+
+      if (!ordersSnapshot.empty) {
+        const orderDoc = ordersSnapshot.docs[0];
+        const orderRef = doc(db, "ordersTest", orderDoc.id);
+        const currentOrderData = orderDoc.data();
+
+        // ✅ FIX: Always find next available index (never merge)
+        const findNextAvailableIndex = () => {
+          let index = 0;
+          while (
+            currentOrderData[`paperProductCode${index === 0 ? "" : index}`]
+          ) {
+            index++;
+          }
+          return index;
+        };
+
+        const materialUpdates = {};
+        const materialsArray = Object.values(groupedMaterials);
+
+        // ✅ FIX: Always create new entries for each allocation
+        materialsArray.forEach((material) => {
+          const targetIndex = findNextAvailableIndex();
+          const suffix = targetIndex === 0 ? "" : targetIndex;
+
+          const productData = paperProductCodeData.find(
+            (item) => item.value === material.paperProductCode
+          );
+
+          materialUpdates[`paperProductCode${suffix}`] = {
+            label: productData?.label || material.paperProductCode,
+            value: material.paperProductCode,
+          };
+
+          materialUpdates[`paperProductNo${suffix}`] = material.paperCodes.join(
+            ", "
+          );
+          materialUpdates[`allocatedQty${suffix}`] = material.totalQty;
+          materialUpdates[`materialCategory${suffix}`] =
+            material.materialCategory;
+        });
+
+        await updateDoc(orderRef, {
+          ...materialUpdates,
+          materialAllotStatus: "Allocated",
+          updatedAt: new Date(),
+        });
+
+        console.log(
+          "✅ Order updated with allocated materials:",
+          materialUpdates
+        );
+      } else {
+        console.warn("⚠️ No order found with jobCardNo:", formData.jobCardNo);
+      }
+
+      alert(
+        "Material issued successfully! Job status updated to 'Allocated'."
+      );
       setSelectedRolls([]);
 
       setTimeout(() => navigate("/issue_material"), 900);
     } catch (err) {
       console.error("Error issuing material:", err);
-      alert("Error issuing material");
+      alert("Error issuing material: " + err.message);
     }
   };
 
@@ -363,7 +440,6 @@ const MaterialIssueForm = () => {
       <hr className="mb-6" />
 
       <div className="py-16 bg-[#F6F6F6] rounded-2xl container space-y-8">
-        {/* --- TOP FORM --- */}
         <div className="grid md:grid-cols-2 gap-8 ">
           <Input
             label="Job Card No"
@@ -386,13 +462,13 @@ const MaterialIssueForm = () => {
             onChange={handleChange}
           />
           <Input
-            label="Requested Material"
+            label="Remaining Material"
             name="requestedMaterial"
             value={formData.requestedMaterial}
             onChange={handleChange}
+            readOnly
           />
 
-          {/* ✅ Material Type Dropdown */}
           <select
             className="inputStyle"
             value={jobPaper}
@@ -406,7 +482,6 @@ const MaterialIssueForm = () => {
             ))}
           </select>
 
-          {/* ✅ Company Name Dropdown */}
           <select
             className="inputStyle"
             value={paperProductCode}
@@ -438,7 +513,6 @@ const MaterialIssueForm = () => {
 
         <hr />
 
-        {/* MATERIAL TABLES */}
         {loadingMaterials ? (
           <div className="text-center py-8">
             <p className="text-lg">Loading materials...</p>
@@ -490,7 +564,6 @@ const MaterialIssueForm = () => {
           </div>
         )}
 
-        {/* SELECTED MATERIAL SUMMARY */}
         <div className="shadow-xl rounded-2xl bg-white overflow-x-auto">
           <table className="w-full border text-xl text-center">
             <thead className="">

@@ -18,6 +18,7 @@ const StockReport = () => {
       try {
         setLoading(true);
 
+        // Use real Firebase data
         const materialsSnapshot = await getDocs(collection(db, "materials"));
         const materials = materialsSnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -33,12 +34,26 @@ const StockReport = () => {
         }));
 
         const stockReport = materials.map((material) => {
-          const materialTransactions = transactions.filter(
-            (t) =>
-              t.paperCode === material.paperCode ||
-              t.paperProductNo === material.paperCode
-          );
+          // ✅ FIX: Match transactions by paperProductNo (which contains the actual paper codes like "CAP25-001")
+          const materialTransactions = transactions.filter((t) => {
+            if (material.materialCategory === "RAW") {
+              // Match by paperProductNo which contains the actual paper codes
+              // t.paperProductNo can be a comma-separated list like "CAP25-001, CAP25-002"
+              const transactionPaperCodes = t.paperProductNo 
+                ? t.paperProductNo.split(',').map(code => code.trim()) 
+                : [];
+              
+              // Check if this material's paperCode is in the transaction's paperProductNo list
+              return transactionPaperCodes.includes(material.paperCode);
+            } else if (material.materialCategory === "LO" || material.materialCategory === "WIP") {
+              // LO/WIP materials don't have consumption transactions
+              // They are created as output, not consumed
+              return false;
+            }
+            return false;
+          });
 
+          // Calculate totals from matched transactions
           const totalUsed = materialTransactions.reduce(
             (sum, t) => sum + (parseFloat(t.usedQty) || 0),
             0
@@ -101,7 +116,6 @@ const StockReport = () => {
     const formattedDate = item.date.toISOString().split("T")[0];
     const s = search.toLowerCase();
 
-    // Search filter
     const matchesSearch =
       item.paperCode.toLowerCase().includes(s) ||
       item.paperProductCode.toLowerCase().includes(s) ||
@@ -109,12 +123,8 @@ const StockReport = () => {
       item.sourceJobCardNo.toLowerCase().includes(s);
 
     if (!matchesSearch) return false;
-
-    // Date range filter
     if (fromDate && formattedDate < fromDate) return false;
     if (toDate && formattedDate > toDate) return false;
-
-    // Category filter
     if (categoryFilter !== "ALL" && item.materialCategory !== categoryFilter) {
       return false;
     }
@@ -203,7 +213,7 @@ const StockReport = () => {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-3xl font-bold">Stock Report</h1>
+      <h1 className="text-3xl font-bold">Stock Report (Fixed)</h1>
       <hr />
 
       {/* Summary Cards */}
@@ -248,7 +258,6 @@ const StockReport = () => {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-end">
-        {/* Search */}
         <div className="flex-1 min-w-[200px] relative">
           <input
             type="text"
@@ -263,7 +272,6 @@ const StockReport = () => {
           <FiSearch className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
         </div>
 
-        {/* Category Filter */}
         <div>
           <label className="block mb-2 font-medium text-sm">Category</label>
           <select
@@ -281,7 +289,6 @@ const StockReport = () => {
           </select>
         </div>
 
-        {/* From Date */}
         <div>
           <label className="block mb-2 font-medium text-sm">From Date</label>
           <input
@@ -295,7 +302,6 @@ const StockReport = () => {
           />
         </div>
 
-        {/* To Date */}
         <div>
           <label className="block mb-2 font-medium text-sm">To Date</label>
           <input
@@ -309,7 +315,6 @@ const StockReport = () => {
           />
         </div>
 
-        {/* Export Button */}
         <button
           onClick={exportToCSV}
           className="bg-green-600 text-white px-4 py-3 rounded-2xl flex items-center gap-2 hover:bg-green-700"
@@ -402,7 +407,6 @@ const StockReport = () => {
             )}
           </tbody>
 
-          {/* Footer Totals */}
           <tfoot className="bg-gray-100 font-bold">
             <tr className="text-center">
               <td colSpan="5" className="border px-3 py-3 text-right">
@@ -474,26 +478,22 @@ const StockReport = () => {
             added to inventory
           </li>
           <li>
-            <strong>Used:</strong> Total quantity consumed across all jobs that
-            used this material
+            <strong>Used:</strong> Quantity consumed from THIS specific material (not cumulative across stages)
           </li>
           <li>
-            <strong>Waste:</strong> Total wastage during production
+            <strong>Waste:</strong> Wastage generated when THIS material was used
           </li>
           <li>
-            <strong>LO (Leftover):</strong> Reusable material generated during
-            production
+            <strong>LO (Leftover):</strong> Reusable material generated when THIS material was consumed
           </li>
           <li>
-            <strong>WIP (Work in Progress):</strong> Semi-finished materials
-            moving between stages
+            <strong>WIP (Work in Progress):</strong> Semi-finished material created from THIS material
           </li>
           <li>
             <strong>Available:</strong> Current available quantity in stock
           </li>
           <li>
-            <strong>Source Job/Stage:</strong> For LO and WIP materials, shows
-            which job and stage created them
+            <strong>Note:</strong> For RAW materials, Used/Waste/LO/WIP show first stage consumption. LO/WIP materials show their creation quantity in "Material In"
           </li>
         </ul>
       </div>
