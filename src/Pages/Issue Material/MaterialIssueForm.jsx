@@ -215,181 +215,166 @@ const MaterialIssueForm = () => {
   /* -------------------------------------------------------------
      4) ISSUE MATERIAL & SUBTRACT STOCK IN FIRESTORE + UPDATE ORDER
   --------------------------------------------------------------- */
-  const handleIssue = async () => {
-    if (selectedRolls.length === 0) {
-      alert("Please select at least one material to issue");
-      return;
-    }
+const handleIssue = async () => {
+  if (selectedRolls.length === 0) {
+    alert("Please select at least one material to issue");
+    return;
+  }
 
-    const invalidRolls = selectedRolls.filter(
-      (roll) => Number(roll.issuedMeter) > roll.availableMeter
+  const invalidRolls = selectedRolls.filter(
+    (roll) => Number(roll.issuedMeter) > roll.availableMeter
+  );
+
+  if (invalidRolls.length > 0) {
+    alert(
+      `Cannot issue more than available stock for: ${invalidRolls
+        .map((r) => r.paperCode)
+        .join(", ")}`
     );
+    return;
+  }
 
-    if (invalidRolls.length > 0) {
-      alert(
-        `Cannot issue more than available stock for: ${invalidRolls
-          .map((r) => r.paperCode)
-          .join(", ")}`
-      );
-      return;
-    }
+  try {
+    // STEP 1: Deduct stock + create transactions
+    for (const roll of selectedRolls) {
+      const issuedQty = Number(roll.issuedMeter);
+      const newAvailableMeter = roll.availableMeter - issuedQty;
 
-    try {
-      // STEP 1: Deduct stock + create transactions
-      for (const roll of selectedRolls) {
-        const issuedQty = Number(roll.issuedMeter);
-        const newAvailableMeter = roll.availableMeter - issuedQty;
-
-        await updateDoc(doc(db, "materials", roll.id), {
-          availableRunningMeter: newAvailableMeter,
-          isActive: newAvailableMeter > 0,
-          updatedAt: new Date(),
-        });
-
-        await addDoc(collection(db, "materialTransactions"), {
-          transactionType: "issue",
-          transactionDate: serverTimestamp(),
-          jobCardNo: formData.jobCardNo,
-          paperCode: roll.paperCode,
-          paperProductCode: roll.paperProductCode,
-          materialCategory: roll.materialCategory || "RAW",
-          usedQty: issuedQty,
-          wasteQty: 0,
-          loQty: 0,
-          wipQty: 0,
-          stage: null,
-          newPaperCode: null,
-          newMaterialId: null,
-          createdBy: "Admin",
-          remarks: `Issued ${issuedQty}m for job ${formData.jobCardNo}`,
-        });
-      }
-
-      // STEP 2: Get previous issued/remaining values
-      const reqRef = doc(db, "materialRequest", id);
-      const reqSnap = await getDoc(reqRef);
-
-      let prevIssued = 0;
-      let originalRequestedMeter = 0;
-
-      if (reqSnap.exists()) {
-        const reqData = reqSnap.data();
-        prevIssued = Number(reqData.issuedMeter || 0);
-        originalRequestedMeter = Number(
-          reqData.requiredMaterial || reqData.requestedMaterial || 0
-        );
-      }
-
-      // STEP 3: Calculate new totals
-      const newIssuedTotal = prevIssued + totalIssued;
-      let remainingMeter = originalRequestedMeter - newIssuedTotal;
-      if (remainingMeter < 0) remainingMeter = 0;
-
-      // ✅ FIX: Only mark as issued when fully allocated
-      const isIssued = newIssuedTotal >= originalRequestedMeter;
-
-      // STEP 4: Update materialRequest document
-      await updateDoc(reqRef, {
-        issuedMeter: newIssuedTotal,
-        remainingMeter: remainingMeter,
-        isIssued: isIssued,
+      await updateDoc(doc(db, "materials", roll.id), {
+        availableRunningMeter: newAvailableMeter,
+        isActive: newAvailableMeter > 0,
         updatedAt: new Date(),
       });
 
-      // STEP 5: Group materials by paperProductCode
-      const groupedMaterials = {};
-
-      selectedRolls.forEach((roll) => {
-        const code = roll.paperProductCode;
-
-        if (!groupedMaterials[code]) {
-          groupedMaterials[code] = {
-            paperProductCode: code,
-            paperCodes: [],
-            totalQty: 0,
-            materialCategory: roll.materialCategory || "RAW",
-          };
-        }
-
-        groupedMaterials[code].paperCodes.push(roll.paperCode);
-        groupedMaterials[code].totalQty += Number(roll.issuedMeter);
+      await addDoc(collection(db, "materialTransactions"), {
+        transactionType: "issue",
+        transactionDate: serverTimestamp(),
+        jobCardNo: formData.jobCardNo,
+        paperCode: roll.paperCode,
+        paperProductCode: roll.paperProductCode,
+        materialCategory: roll.materialCategory || "RAW",
+        usedQty: issuedQty,
+        wasteQty: 0,
+        loQty: 0,
+        wipQty: 0,
+        stage: null,
+        newPaperCode: null,
+        newMaterialId: null,
+        createdBy: "Admin",
+        remarks: `Issued ${issuedQty}m for job ${formData.jobCardNo}`,
       });
+    }
 
-      // STEP 6: Update ordersTest with allocated materials
-      const ordersQuery = query(
-        collection(db, "ordersTest"),
-        where("jobCardNo", "==", formData.jobCardNo)
+    // STEP 2: Get previous issued/remaining values
+    const reqRef = doc(db, "materialRequest", id);
+    const reqSnap = await getDoc(reqRef);
+
+    let prevIssued = 0;
+    let originalRequestedMeter = 0;
+
+    if (reqSnap.exists()) {
+      const reqData = reqSnap.data();
+      prevIssued = Number(reqData.issuedMeter || 0);
+      originalRequestedMeter = Number(
+        reqData.requiredMaterial || reqData.requestedMaterial || 0
       );
+    }
 
-      const ordersSnapshot = await getDocs(ordersQuery);
+    // STEP 3: Calculate new totals
+    const newIssuedTotal = prevIssued + totalIssued;
+    let remainingMeter = originalRequestedMeter - newIssuedTotal;
+    if (remainingMeter < 0) remainingMeter = 0;
 
-      if (!ordersSnapshot.empty) {
-        const orderDoc = ordersSnapshot.docs[0];
-        const orderRef = doc(db, "ordersTest", orderDoc.id);
-        const currentOrderData = orderDoc.data();
+    // Only mark as issued when fully allocated
+    const isIssued = newIssuedTotal >= originalRequestedMeter;
 
-        // ✅ FIX: Always find next available index (never merge)
-        const findNextAvailableIndex = () => {
-          let index = 0;
-          while (
-            currentOrderData[`paperProductCode${index === 0 ? "" : index}`]
-          ) {
-            index++;
-          }
-          return index;
+    // STEP 4: Update materialRequest document
+    await updateDoc(reqRef, {
+      issuedMeter: newIssuedTotal,
+      remainingMeter: remainingMeter,
+      isIssued: isIssued,
+      updatedAt: new Date(),
+    });
+
+    // STEP 5: Update ordersTest with allocated materials
+    const ordersQuery = query(
+      collection(db, "ordersTest"),
+      where("jobCardNo", "==", formData.jobCardNo)
+    );
+
+    const ordersSnapshot = await getDocs(ordersQuery);
+
+    if (!ordersSnapshot.empty) {
+      const orderDoc = ordersSnapshot.docs[0];
+      const orderRef = doc(db, "ordersTest", orderDoc.id);
+      const currentOrderData = orderDoc.data();
+
+      // ✅ FIX: Find next available index for each roll separately
+      const findNextAvailableIndex = () => {
+        let index = 0;
+        while (
+          currentOrderData[`paperProductCode${index === 0 ? "" : index}`]
+        ) {
+          index++;
+        }
+        return index;
+      };
+
+      const materialUpdates = {};
+
+      // ✅ FIX: Create separate entries for EACH selected roll
+      selectedRolls.forEach((roll) => {
+        const targetIndex = findNextAvailableIndex();
+        const suffix = targetIndex === 0 ? "" : targetIndex;
+
+        const productData = paperProductCodeData.find(
+          (item) => item.value === roll.paperProductCode
+        );
+
+        materialUpdates[`paperProductCode${suffix}`] = {
+          label: productData?.label || roll.paperProductCode,
+          value: roll.paperProductCode,
         };
 
-        const materialUpdates = {};
-        const materialsArray = Object.values(groupedMaterials);
+        // ✅ Store individual paperCode, not comma-separated list
+        materialUpdates[`paperProductNo${suffix}`] = roll.paperCode;
+        
+        // ✅ Store individual issuedMeter for this specific roll
+        materialUpdates[`allocatedQty${suffix}`] = Number(roll.issuedMeter);
+        
+        // ✅ Store material category for this specific roll
+        materialUpdates[`materialCategory${suffix}`] = roll.materialCategory || "RAW";
 
-        // ✅ FIX: Always create new entries for each allocation
-        materialsArray.forEach((material) => {
-          const targetIndex = findNextAvailableIndex();
-          const suffix = targetIndex === 0 ? "" : targetIndex;
+        // Update the currentOrderData to reflect the new entry
+        currentOrderData[`paperProductCode${suffix}`] = materialUpdates[`paperProductCode${suffix}`];
+      });
 
-          const productData = paperProductCodeData.find(
-            (item) => item.value === material.paperProductCode
-          );
+      await updateDoc(orderRef, {
+        ...materialUpdates,
+        materialAllotStatus: "Allocated",
+        updatedAt: new Date(),
+        paperSize: formData.paperSize
+      });
 
-          materialUpdates[`paperProductCode${suffix}`] = {
-            label: productData?.label || material.paperProductCode,
-            value: material.paperProductCode,
-          };
-
-          materialUpdates[`paperProductNo${suffix}`] = material.paperCodes.join(
-            ", "
-          );
-          materialUpdates[`allocatedQty${suffix}`] = material.totalQty;
-          materialUpdates[`materialCategory${suffix}`] =
-            material.materialCategory;
-        });
-
-        await updateDoc(orderRef, {
-          ...materialUpdates,
-          materialAllotStatus: "Allocated",
-          updatedAt: new Date(),
-          paperSize:formData.paperSize
-        });
-
-        console.log(
-          "✅ Order updated with allocated materials:",
-          materialUpdates
-        );
-      } else {
-        console.warn("⚠️ No order found with jobCardNo:", formData.jobCardNo);
-      }
-
-      alert(
-        "Material issued successfully! Job status updated to 'Allocated'."
+      console.log(
+        "✅ Order updated with allocated materials:",
+        materialUpdates
       );
-      setSelectedRolls([]);
-
-      setTimeout(() => navigate("/issue_material"), 900);
-    } catch (err) {
-      console.error("Error issuing material:", err);
-      alert("Error issuing material: " + err.message);
+    } else {
+      console.warn("⚠️ No order found with jobCardNo:", formData.jobCardNo);
     }
-  };
+
+    alert(
+      "Material issued successfully! Job status updated to 'Allocated'."
+    );
+    setSelectedRolls([]);
+
+    setTimeout(() => navigate("/issue_material"), 900);
+  } catch (err) {
+    console.error("Error issuing material:", err);
+    alert("Error issuing material: " + err.message);
+  }
+};
 
   /* -------------------------------------------------------------
      5) INPUT HANDLER
