@@ -1,15 +1,17 @@
 import React from "react";
-import Sidebar from "./SideBar";
+import Sidebar from "./SideBar"; // ensure filename matches
 import Header from "./Header";
+import { Outlet } from "react-router-dom";
 
-const AdminLayout = ({ children }) => {
+const AdminLayout = () => {
   return (
-    <div className=" h-screen bg-[#FFFFFF]">
+    <div className="h-screen w-screen flex flex-col overflow-auto">
       <Header />
-
-      <div className="flex flex-row h-full flex-1">
+      <div className="flex flex-1 w-full">
         <Sidebar />
-        <main className="p-6 py-10 w-full">{children}</main>
+        <main className="px-6 py-10 pr-6 w-full container  ">
+          <Outlet /> {/* This renders nested route components */}
+        </main>
       </div>
     </div>
   );

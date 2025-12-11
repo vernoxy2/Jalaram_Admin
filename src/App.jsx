@@ -1,36 +1,54 @@
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Link,
-  Form,
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./Components/Home";
-import MaterialList from "./Components/MaterialList";
-import AddMateriall from "./Components/AddMaterial";
-import JobCard from "./Components/JobCard";
-import AddJob from "./Components/AddJob";
-import JobDetailScreen from "./Components/JobDetailScreen";
+import MaterialList from "./Pages/MaterialList/MaterialList";
+import AddMaterial from "./Pages/MaterialList/AddMaterial";
+import JobCard from "./Pages/JobCard/JobCard";
+import AddJob from "./Pages/JobCard/AddJob";
 import AdminLayout from "./Components/Layout/AdminLayout";
 import Dashboard from "./Pages/Dashboard";
+import MaterialIssueForm from "./Pages/Issue Material/MaterialIssueForm";
+import MaterialIssueRequestList from "./Pages/Issue Material/MaterialIssueRequestList";
+import Stock from "./Pages/StockDetail/Stock";
+import JobDetailsScreen from "./Pages/JobCard/JobDetailScreen";
 
 const App = () => {
   return (
     <Router>
-      
-      <AdminLayout >
-        <Dashboard/>
-      </AdminLayout>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/material" element={<MaterialList />} />
-        <Route path="/addmaterial" element={<AddMateriall />} />
-        <Route path="/material/edit/:id" element={<AddMateriall />} />
-        <Route path="/jobcard" element={<JobCard /> } />
-        <Route path="/addjob" element={<AddJob /> } />
-        <Route path="/addjob/:id" element={<AddJob /> } />
-        <Route path="/jobDetailScreen/:id" element={<JobDetailScreen /> } />
+        {/* Layout Route */}
+        <Route path="/" element={<AdminLayout />}>
+          {/* Nested Routes */}
+          <Route index element={<Dashboard />} />
+          <Route path="home" element={<Home />} />
 
+          {/* JobCard Routes - FIXED */}
+          <Route path="jobcard" element={<JobCard />} />
+          <Route path="jobcard/addjob" element={<AddJob />} />
+          <Route path="jobcard/edit/:id" element={<AddJob />} />
+          <Route path="jobcard/detail/:id" element={<JobDetailsScreen />} />
+
+          {/* Material Routes */}
+          <Route path="material_in">
+            <Route index element={<MaterialList />} />
+            <Route path="add_material" element={<AddMaterial />} />
+            <Route path="edit/:id" element={<AddMaterial />} />
+          </Route>
+
+          {/* Material Issue */}
+          <Route path="issue_material">
+            <Route index element={<MaterialIssueRequestList />} />
+            <Route path=":id" element={<MaterialIssueForm />} />
+          </Route>
+
+          {/* Dispatch */}
+          <Route path="dispatch" element={<Dashboard />} />
+
+          {/* Total Inventory */}
+          <Route path="total_inventory" element={<Dashboard />} />
+
+          {/* Stock */}
+          <Route path="stock" element={<Stock />} />
+        </Route>
       </Routes>
     </Router>
   );

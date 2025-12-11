@@ -6,6 +6,7 @@ export default {
       colors: {
         primary: "#3668B1",
         secondary: "#3566AD",
+        textcolor:"#848282",
       },
       fontFamily: {
         inter: ["Inter", "sans-serif"],

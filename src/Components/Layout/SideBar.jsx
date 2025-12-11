@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import Right from "../../assets/Right.svg";
+import {FaCaretLeft, FaCaretRight} from "react-icons/fa6"
+import { HiOutlineMenuAlt1 } from "react-icons/hi";
+import { IoMenu } from "react-icons/io5";
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(true);
@@ -10,34 +13,48 @@ const Sidebar = () => {
   const toggleMobileSidebar = () => setMobileOpen(!mobileOpen);
 
   const location = useLocation();
-  const currentPath = location.pathname;
+  const currentPath = "/" + location.pathname.split("/")[1];
 
   const menuItems = [
     { name: "Dashboard", path: "/" },
     { name: "Job Card", path: "/jobcard" },
     { name: "Material In", path: "/material_in" },
-    { name: "Material Issue", path: "/material_issue" },
+    { name: "Material Issue", path: "/issue_material" },
     { name: "Dispatch", path: "/dispatch" },
     { name: "Total Inventory", path: "/total_inventory" },
     { name: "Stock", path: "/stock" },
   ];
 
   return (
-    <div className="flex flex-col h-full border border-black ">
-      <img src={Right} alt="" className="absolute rotate-180 bottom-0"/>
+    <div className="flex relative">
+      <img src={Right} alt="" className="absolute rotate-180 bottom-0" />
+
       {/* Desktop Sidebar */}
       <div
-        className={`hidden md:flex flex-col h-full border border-black ${
-          isOpen ? "w-[360px]" : "w-20"
-        } bg-gradient-to-b from-[#102F5C] to-[#3566AD] text-white transition-all duration-300`}
+        className={`hidden md:flex flex-col h-full  ${
+          isOpen ? "w-96" : "w-16 hidden"
+        } bg-gradient-to-b from-[#102F5C] to-[#3566AD] text-white transition-all duration-300 `}
       >
-        <nav className="flex flex-col mt-16 gap-1 px-2 ms-10 me-6">
+        <div className="flex items-center justify-between p-4 border-gray-700">
+          {isOpen && (
+            <Link to={"/"}>
+              <h1 className="text-white  delay-100">Shree Jalaram </h1>
+            </Link>
+          )}
+          <button
+            onClick={toggleSidebar}
+            className=" p-1.5 bg-white rounded-lg hover:bg-white/80 text-black"
+          >
+            {isOpen ? <FaCaretLeft className="text-2xl text-primary"/> : <IoMenu className="text-2xl text-primary"/>}
+          </button>
+        </div>
+        <nav className="flex flex-col mt-10 gap-1 px-2 ml-10 mr-6">
           {menuItems.map((item) => (
             <Link
               key={item.name}
               to={item.path}
               className={`flex text-xl font-bold items-center gap-3 px-6 py-3 rounded-md transition-colors duration-200 ${
-                currentPath === item.path
+                isOpen && currentPath === item.path
                   ? "bg-white text-[#3668B1]"
                   : "hover:bg-white hover:text-[#3668B1]"
               }`}
