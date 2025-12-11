@@ -180,7 +180,12 @@ const MaterialIssueRequestList = () => {
                         .split("T")[0]
                     : ""}
                 </td>
-                <td className="border px-4 py-2">{item.requiredMaterial}</td>
+                {/* <td className="border px-4 py-2">{item.requiredMaterial}</td> */}
+                <td className="border px-4 py-2">
+                  {item.requiredMaterial
+                    ? parseFloat(item.requiredMaterial).toString()
+                    : ""}
+                </td>
                 <td className="border px-4 py-2">
                   {item.issuedMeter ? item.issuedMeter : 0}
                 </td>
