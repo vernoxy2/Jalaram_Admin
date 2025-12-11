@@ -14,6 +14,7 @@ const MaterialList = () => {
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState(""); // New state for category filter
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -75,6 +76,10 @@ const MaterialList = () => {
 
     // If toDate selected → only allow materials <= toDate
     if (toDate && formattedDate > toDate) return false;
+
+    // 🏷️ CATEGORY FILTER
+    // If categoryFilter selected → only show matching category
+    if (categoryFilter && item.materialCategory !== categoryFilter) return false;
 
     return true;
   });
@@ -165,6 +170,24 @@ const MaterialList = () => {
             className="border border-black/20 rounded-2xl p-3 w-full"
           />
         </div>
+
+        {/* MATERIAL CATEGORY FILTER DROPDOWN */}
+        <div className="relative">
+          <label className="block mb-2 font-medium">Material Category</label>
+          <select
+            value={categoryFilter}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="border border-black/20 rounded-2xl p-3 w-full"
+          >
+            <option value="">All Categories</option>
+            <option value="RAW">RAW</option>
+            <option value="LO">LO</option>
+            <option value="WIP">WIP</option>
+          </select>
+        </div>
       </div>
 
       {/* ✅ Show error message if exists */}
@@ -183,6 +206,7 @@ const MaterialList = () => {
               <th className="px-4 py-2 border-r-2">Paper Code</th>
               <th className="px-4 py-2 border-r-2">Company</th>
               <th className="px-4 py-2 border-r-2">Material Type</th>
+              <th className="px-4 py-2 border-r-2">Material Category</th>
               <th className="px-4 py-2 border-r-2">Total Running Meter</th>
               <th className="px-4 py-2 border-r-2">Available Running Meter</th>
               <th className="px-4 py-2 ">Action</th>
@@ -207,6 +231,7 @@ const MaterialList = () => {
                   {item.paperProductCode || "-"}
                 </td>
                 <td className="border px-4 py-2">{item.jobPaper || "-"}</td>
+                <td className="border px-4 py-2">{item.materialCategory || "-"}</td>
                 <td className="border px-4 py-2">{item.totalRunningMeter}</td>
                 <td className="border px-4 py-2">
                   {item.availableRunningMeter}
@@ -227,7 +252,7 @@ const MaterialList = () => {
 
             {currentItems.length === 0 && (
               <tr>
-                <td colSpan="5" className="text-center p-4">
+                <td colSpan="8" className="text-center p-4">
                   No materials found
                 </td>
               </tr>

@@ -33,46 +33,103 @@ const StockReport = () => {
         }));
 
         const stockReport = materials.map((material) => {
+          // Match transactions by paperCode for ALL material categories
           const materialTransactions = transactions.filter((t) => {
+            // For RAW materials: match against paperProductNo (comma-separated paper codes)
             if (material.materialCategory === "RAW") {
               const transactionPaperCodes = t.paperProductNo 
                 ? t.paperProductNo.split(',').map(code => code.trim()) 
                 : [];
               return transactionPaperCodes.includes(material.paperCode);
             }
+            
+            // For LO/WIP materials: match by exact paperCode
+            if (material.materialCategory === "LO" || material.materialCategory === "WIP") {
+              return t.paperCode === material.paperCode || 
+                     t.paperProductCode === material.paperCode ||
+                     t.paperProductNo === material.paperCode;
+            }
+            
             return false;
           });
 
-          const stageOrder = ['printing', 'punching', 'slitting', 'slotting'];
-          
-          let lastStage = null;
-          for (let i = stageOrder.length - 1; i >= 0; i--) {
-            const stageTransactions = materialTransactions.filter(
-              t => (t.stage || '').toLowerCase() === stageOrder[i]
+          let totalUsed = 0;
+          let totalWaste = 0;
+          let totalLO = 0;
+          let totalWIP = 0;
+
+          if (material.materialCategory === "RAW") {
+            // ✅ For RAW: Find the LAST stage where material was used
+            const stageOrder = ['printing', 'punching', 'slitting', 'slotting'];
+            
+            let lastStage = null;
+            for (let i = stageOrder.length - 1; i >= 0; i--) {
+              const stageTransactions = materialTransactions.filter(
+                t => (t.stage || '').toLowerCase() === stageOrder[i]
+              );
+              if (stageTransactions.length > 0) {
+                lastStage = stageOrder[i];
+                break;
+              }
+            }
+
+            // Only count the LAST stage to avoid double counting
+            if (lastStage) {
+              const lastStageTransactions = materialTransactions.filter(
+                t => (t.stage || '').toLowerCase() === lastStage
+              );
+              
+              totalUsed = lastStageTransactions.reduce(
+                (sum, t) => sum + (parseFloat(t.usedQty) || 0), 0
+              );
+            }
+
+            // Sum waste, LO, WIP across ALL stages (these are actual losses/outputs)
+            totalWaste = materialTransactions
+              .filter(t => t.transactionType === 'consumption')
+              .reduce((sum, t) => sum + (parseFloat(t.wasteQty) || 0), 0);
+              
+            totalLO = materialTransactions
+              .filter(t => t.transactionType === 'consumption')
+              .reduce((sum, t) => sum + (parseFloat(t.loQty) || 0), 0);
+              
+            totalWIP = materialTransactions
+              .filter(t => t.transactionType === 'consumption')
+              .reduce((sum, t) => sum + (parseFloat(t.wipQty) || 0), 0);
+              
+          } else if (material.materialCategory === "LO" || material.materialCategory === "WIP") {
+            // ✅ For LO/WIP: Only calculate if material has been consumed
+            const consumptionTransactions = materialTransactions.filter(
+              t => t.transactionType === 'consumption'
             );
-            if (stageTransactions.length > 0) {
-              lastStage = stageOrder[i];
-              break;
+
+            // ✅ FIX: If no consumption transactions exist, this material hasn't been used yet
+            if (consumptionTransactions.length > 0) {
+              const created = material.totalRunningMeter || 0;
+
+              totalWaste = consumptionTransactions.reduce(
+                (sum, t) => sum + (parseFloat(t.wasteQty) || 0), 0
+              );
+              totalLO = consumptionTransactions.reduce(
+                (sum, t) => sum + (parseFloat(t.loQty) || 0), 0
+              );
+              totalWIP = consumptionTransactions.reduce(
+                (sum, t) => sum + (parseFloat(t.wipQty) || 0), 0
+              );
+
+              // ✅ Used = Created - (Waste + LO + WIP)
+              totalUsed = created - (totalWaste + totalLO + totalWIP);
+              
+              // Ensure used is not negative
+              if (totalUsed < 0) totalUsed = 0;
+            } else {
+              // ✅ Material not consumed yet - all values are 0
+              totalUsed = 0;
+              totalWaste = 0;
+              totalLO = 0;
+              totalWIP = 0;
             }
           }
-
-          const totalUsed = lastStage 
-            ? materialTransactions
-                .filter(t => (t.stage || '').toLowerCase() === lastStage)
-                .reduce((sum, t) => sum + (parseFloat(t.usedQty) || 0), 0)
-            : 0;
-
-          const totalWaste = materialTransactions
-            .filter(t => t.transactionType === 'consumption')
-            .reduce((sum, t) => sum + (parseFloat(t.wasteQty) || 0), 0);
-            
-          const totalLO = materialTransactions
-            .filter(t => t.transactionType === 'consumption')
-            .reduce((sum, t) => sum + (parseFloat(t.loQty) || 0), 0);
-            
-          const totalWIP = materialTransactions
-            .filter(t => t.transactionType === 'consumption')
-            .reduce((sum, t) => sum + (parseFloat(t.wipQty) || 0), 0);
 
           const materialDate = material.createdAt
             ? new Date(
@@ -82,7 +139,6 @@ const StockReport = () => {
               )
             : new Date();
 
-          // ✅ NEW: Separate RAW purchased vs Created quantity
           const isPurchased = material.materialCategory === "RAW";
           const isCreated = material.materialCategory === "LO" || material.materialCategory === "WIP";
 
@@ -93,7 +149,6 @@ const StockReport = () => {
             paperProductCode: material.paperProductCode || "-",
             materialCategory: material.materialCategory || "RAW",
             jobPaper: material.jobPaper || "-",
-            // ✅ NEW: Split into two columns
             purchased: isPurchased ? (material.totalRunningMeter || 0) : 0,
             created: isCreated ? (material.totalRunningMeter || 0) : 0,
             used: totalUsed,
@@ -152,7 +207,7 @@ const StockReport = () => {
     }
   };
 
-  // ✅ NEW: Smart totals that work with filters
+  // Summary totals
   const summaryTotals = filteredStock.reduce(
     (acc, item) => {
       acc.purchased += item.purchased;
@@ -236,7 +291,7 @@ const StockReport = () => {
       <h1 className="text-3xl font-bold">Stock Report</h1>
       <hr />
 
-      {/* ✅ NEW: Dynamic Summary Cards based on filter */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         <div className="bg-blue-100 p-4 rounded-lg shadow">
           <div className="text-xs text-gray-600">RAW Purchased</div>
@@ -501,25 +556,22 @@ const StockReport = () => {
         <h3 className="font-bold text-lg mb-2">📊 Understanding the Report</h3>
         <ul className="space-y-1 text-sm">
           <li>
-            <strong>Purchased:</strong> RAW material bought from suppliers (only for RAW materials)
+            <strong>Purchased:</strong> RAW material bought from suppliers
           </li>
           <li>
-            <strong>Created:</strong> LO/WIP materials generated during production (only for LO/WIP materials)
+            <strong>Created:</strong> LO/WIP materials generated during production
           </li>
           <li>
-            <strong>Used (Final Output):</strong> Final product output from the last production stage
+            <strong>Used:</strong> For RAW - final output from last stage. For LO/WIP - calculated as: Created - (Waste + LO + WIP)
           </li>
           <li>
-            <strong>Waste:</strong> Total material wasted across all production stages
+            <strong>Waste/LO/WIP:</strong> Materials lost or generated at each stage
           </li>
           <li>
-            <strong>LO/WIP:</strong> Quantities of leftover and work-in-progress materials generated
-          </li>
-          <li>
-            <strong>Total Available:</strong> Current available stock across all categories (RAW + LO + WIP)
+            <strong>Available:</strong> Current stock available for use
           </li>
           <li className="bg-yellow-50 p-2 rounded mt-2">
-            <strong>💡 Tip:</strong> Use the Category filter to view RAW purchases separately from LO/WIP created materials. Totals adjust automatically!
+            <strong>💡 Formula for LO/WIP:</strong> Used = Created - Waste - LO - WIP. This prevents double-counting as material flows through stages.
           </li>
         </ul>
       </div>
