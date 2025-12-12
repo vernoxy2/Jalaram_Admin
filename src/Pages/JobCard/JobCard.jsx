@@ -262,14 +262,12 @@ const JobCard = () => {
                   onClick={(e) => e.stopPropagation()}
                 >
                   {job.jobStatus?.toLowerCase() !== "completed" && (
-                    <Link to={`edit/${job.id}`}>
-                      <button className="bg-primary text-white py-3 px-6 w-full rounded-md flex items-center justify-center gap-1.5">
-                        Edit{" "}
-                        <span>
-                          <RiPencilFill className="text-2xl" />
-                        </span>
+                      <button
+                        onClick={() => navigate(`edit/${job.id}`)}
+                        className="bg-[#D2D2D2] text-primary p-1 rounded text-2xl"
+                      >
+                        <RiPencilFill />
                       </button>
-                    </Link>
                   )}
                 </td>
               </tr>
