@@ -101,6 +101,9 @@ const MaterialIssueForm = () => {
     fetchRequest();
   }, [id]);
 
+  /* -------------------------------------------------------------
+     2) FETCH MATERIALS WITH SORTING BY CREATED DATE & TIME (OLDEST FIRST)
+  --------------------------------------------------------------- */
   useEffect(() => {
     if (!paperProductCode || !jobPaper || !formData.paperSize) return;
 
@@ -118,6 +121,25 @@ const MaterialIssueForm = () => {
           where("isActive", "==", true),
         ];
 
+        // ✅ Helper function to extract timestamp in milliseconds (includes date AND time)
+        const getTimestamp = (timestamp) => {
+          if (!timestamp) return 0;
+          // Firestore Timestamp with seconds and nanoseconds
+          if (timestamp.seconds !== undefined) {
+            return timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000;
+          }
+          // Firestore Timestamp with toMillis method
+          if (typeof timestamp.toMillis === 'function') {
+            return timestamp.toMillis();
+          }
+          // JavaScript Date object
+          if (timestamp instanceof Date) {
+            return timestamp.getTime();
+          }
+          return 0;
+        };
+
+        // RAW Materials Query
         const rawQuery = query(
           collection(db, "materials"),
           ...baseConditions,
@@ -125,14 +147,18 @@ const MaterialIssueForm = () => {
         );
 
         const rawSnapshot = await getDocs(rawQuery);
-        const rawList = rawSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          paperCode: doc.data().paperCode,
-          availableMeter: doc.data().availableRunningMeter || 0,
-          rack: doc.data().rack || "N/A",
-        }));
+        const rawList = rawSnapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            paperCode: doc.data().paperCode,
+            availableMeter: doc.data().availableRunningMeter || 0,
+            rack: doc.data().rack || "N/A",
+            createdAt: doc.data().createdAt,
+          }))
+          .sort((a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt));
 
+        // LO Materials Query
         const loQuery = query(
           collection(db, "materials"),
           ...baseConditions,
@@ -140,15 +166,19 @@ const MaterialIssueForm = () => {
         );
 
         const loSnapshot = await getDocs(loQuery);
-        const loList = loSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          paperCode: doc.data().paperCode,
-          availableMeter: doc.data().availableRunningMeter || 0,
-          rack: doc.data().rack || "N/A",
-          sourceJobCardNo: doc.data().sourceJobCardNo,
-        }));
+        const loList = loSnapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            paperCode: doc.data().paperCode,
+            availableMeter: doc.data().availableRunningMeter || 0,
+            rack: doc.data().rack || "N/A",
+            sourceJobCardNo: doc.data().sourceJobCardNo,
+            createdAt: doc.data().createdAt,
+          }))
+          .sort((a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt));
 
+        // WIP Materials Query
         const wipQuery = query(
           collection(db, "materials"),
           ...baseConditions,
@@ -156,19 +186,28 @@ const MaterialIssueForm = () => {
         );
 
         const wipSnapshot = await getDocs(wipQuery);
-        const wipList = wipSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          paperCode: doc.data().paperCode,
-          availableMeter: doc.data().availableRunningMeter || 0,
-          rack: doc.data().rack || "N/A",
-          stage: doc.data().sourceStage || "Unknown",
-          sourceJobCardNo: doc.data().sourceJobCardNo,
-        }));
+        const wipList = wipSnapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            paperCode: doc.data().paperCode,
+            availableMeter: doc.data().availableRunningMeter || 0,
+            rack: doc.data().rack || "N/A",
+            stage: doc.data().sourceStage || "Unknown",
+            sourceJobCardNo: doc.data().sourceJobCardNo,
+            createdAt: doc.data().createdAt,
+          }))
+          .sort((a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt));
 
         setRAW(rawList);
         setLO(loList);
         setWIP(wipList);
+
+        // ✅ Debug log to verify sorting (remove after testing)
+        console.log("✅ RAW Materials (sorted by createdAt - oldest first):");
+        rawList.forEach((item, index) => {
+          console.log(`  ${index + 1}. ${item.paperCode} - ${item.createdAt?.seconds ? new Date(item.createdAt.seconds * 1000).toLocaleString('en-GB') : 'N/A'}`);
+        });
       } catch (error) {
         console.error("Error fetching materials:", error);
       } finally {
@@ -180,7 +219,25 @@ const MaterialIssueForm = () => {
   }, [paperProductCode, jobPaper, formData.paperSize]);
 
   /* -------------------------------------------------------------
-     3) HANDLE SELECT / ISSUE METER CHANGE  
+     3) HELPER FUNCTION TO FORMAT DATE (DISPLAY ONLY)
+  --------------------------------------------------------------- */
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "N/A";
+    
+    let date;
+    if (timestamp.seconds) {
+      date = new Date(timestamp.seconds * 1000);
+    } else if (timestamp instanceof Date) {
+      date = timestamp;
+    } else {
+      return "N/A";
+    }
+    
+    return date.toLocaleDateString("en-GB"); // DD/MM/YYYY format
+  };
+
+  /* -------------------------------------------------------------
+     4) HANDLE SELECT / ISSUE METER CHANGE  
   --------------------------------------------------------------- */
   const handleSelect = (materialType, roll) => {
     const exists = selectedRolls.find((item) => item.id === roll.id);
@@ -199,7 +256,20 @@ const MaterialIssueForm = () => {
     }
   };
 
+  // ✅ CHANGE 3: Validate issued meter doesn't exceed available meter
   const handleMeterChange = (id, meter) => {
+    const roll = [...RAW, ...LO, ...WIP].find((r) => r.id === id);
+    const meterValue = Number(meter);
+    
+    // Don't allow negative values
+    if (meterValue < 0) return;
+    
+    // Don't allow values greater than available meter
+    if (roll && meterValue > roll.availableMeter) {
+      alert(`Issue meter cannot exceed available meter (${roll.availableMeter})`);
+      return;
+    }
+
     setSelectedRolls((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, issuedMeter: meter } : item
@@ -213,11 +283,19 @@ const MaterialIssueForm = () => {
   );
 
   /* -------------------------------------------------------------
-     4) ISSUE MATERIAL & SUBTRACT STOCK IN FIRESTORE + UPDATE ORDER
+     5) ISSUE MATERIAL & SUBTRACT STOCK IN FIRESTORE + UPDATE ORDER
   --------------------------------------------------------------- */
   const handleIssue = async () => {
     if (selectedRolls.length === 0) {
       alert("Please select at least one material to issue");
+      return;
+    }
+
+    // ✅ CHANGE 1: Validate total issued doesn't exceed requested material
+    if (totalIssued > formData.requestedMaterial) {
+      alert(
+        `Total issued meter (${totalIssued}) cannot exceed remaining required material (${formData.requestedMaterial})`
+      );
       return;
     }
 
@@ -377,7 +455,7 @@ const MaterialIssueForm = () => {
   };
 
   /* -------------------------------------------------------------
-     5) INPUT HANDLER
+     6) INPUT HANDLER
   --------------------------------------------------------------- */
   const handleChange = (e) => {
     setFormData({
@@ -524,6 +602,7 @@ const MaterialIssueForm = () => {
               onSelect={handleSelect}
               selected={selectedRolls}
               onMeterChange={handleMeterChange}
+              formatDate={formatDate}
             />
             <h2 className="flex items-center ">
               <span>
@@ -538,6 +617,7 @@ const MaterialIssueForm = () => {
               onSelect={handleSelect}
               selected={selectedRolls}
               onMeterChange={handleMeterChange}
+              formatDate={formatDate}
             />
             <h2 className="flex items-center ">
               <span>
@@ -552,6 +632,7 @@ const MaterialIssueForm = () => {
               onSelect={handleSelect}
               selected={selectedRolls}
               onMeterChange={handleMeterChange}
+              formatDate={formatDate}
             />
           </div>
         )}
@@ -636,6 +717,7 @@ const MaterialTable = ({
   onSelect,
   selected,
   onMeterChange,
+  formatDate,
 }) => (
   <div className="mb-10 shadow-xl rounded-2xl bg-white overflow-x-auto">
     <table className="w-full border text-base md:text-lg lg:text-xl text-center">
@@ -644,6 +726,7 @@ const MaterialTable = ({
           <th className="p-2 border">Select</th>
           <th className="p-2 border">Paper Code</th>
           <th className="p-2 border">Available Meter</th>
+          <th className="p-2 border">Created Date</th>
 
           {title.includes("WIP") && <th className="p-2 border">Stage</th>}
           {(title.includes("WIP") || title.includes("LO")) && (
@@ -659,7 +742,7 @@ const MaterialTable = ({
         {data.length === 0 ? (
           <tr>
             <td
-              colSpan={title.includes("WIP") ? 7 : title.includes("LO") ? 6 : 5}
+              colSpan={title.includes("WIP") ? 8 : title.includes("LO") ? 7 : 6}
               className="p-4 text-gray-500"
             >
               No materials available
@@ -682,6 +765,7 @@ const MaterialTable = ({
 
                 <td className="p-2 border">{roll.paperCode}</td>
                 <td className="p-2 border">{roll.availableMeter}</td>
+                <td className="p-2 border">{formatDate(roll.createdAt)}</td>
 
                 {title.includes("WIP") && (
                   <td className="p-2 border capitalize">{roll.stage}</td>
@@ -703,6 +787,7 @@ const MaterialTable = ({
                     onChange={(e) => onMeterChange(roll.id, e.target.value)}
                     placeholder="meter"
                     max={roll.availableMeter}
+                    min="0"
                   />
                 </td>
               </tr>

@@ -6,15 +6,21 @@ import { useNavigate } from "react-router-dom";
 import Addbtn from "../../Components/Addbtn";
 import { FiSearch } from "react-icons/fi";
 import { RiPencilFill } from "react-icons/ri";
+import { FaSortAmountDown, FaSortAmountUp } from "react-icons/fa";
 
 const MaterialList = () => {
   const navigate = useNavigate();
 
   const [materials, setMaterials] = useState([]);
+  const [activeTab, setActiveTab] = useState("raw"); // 'raw' or 'created'
+  
+  // Search and filters
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState(""); // New state for category filter
+  const [categoryFilter, setCategoryFilter] = useState(""); // Only for created tab
+  const [sortOrder, setSortOrder] = useState("desc"); // 'asc' or 'desc'
+  
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -30,66 +36,91 @@ const MaterialList = () => {
         list.push({ id: doc.id, ...doc.data() });
       });
 
-      list.sort((a, b) => {
-        const dateA = a.createdAt?.toDate
-          ? a.createdAt.toDate()
-          : new Date(a.createdAt);
-        const dateB = b.createdAt?.toDate
-          ? b.createdAt.toDate()
-          : new Date(b.createdAt);
-        return dateB - dateA;
-      });
-
       setMaterials(list);
     };
 
     fetchData();
   }, []);
 
-  const filteredMaterials = materials.filter((item) => {
-    // Format material date (from createdAt)
-    const formattedDate = item.createdAt
-      ? new Date(
-          item.createdAt.seconds
-            ? item.createdAt.seconds * 1000
-            : item.createdAt
-        )
-          .toISOString()
-          .split("T")[0]
-      : "";
+  // Reset filters when switching tabs
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSearch("");
+    setFromDate("");
+    setToDate("");
+    setCategoryFilter("");
+    setSortOrder("desc");
+    setCurrentPage(1);
+    setDateError("");
+  };
 
-    const s = search.toLowerCase();
+  // Filter materials based on active tab
+  const getFilteredMaterials = () => {
+    let filtered = materials.filter((item) => {
+      // Tab-specific filtering
+      if (activeTab === "raw") {
+        if (item.materialCategory !== "RAW") return false;
+      } else {
+        // created tab - only LO and WIP
+        if (!["LO", "WIP"].includes(item.materialCategory)) return false;
+      }
 
-    // 🔍 SEARCH filter
-    const matchesSearch =
-      item.paperCode?.toLowerCase().includes(s) ||
-      item.paperProductCode?.toLowerCase().includes(s) ||
-      item.jobPaper?.toLowerCase().includes(s) ||
-      item.totalRunningMeter?.toString().includes(s) ||
-      formattedDate.includes(s);
+      // Format material date
+      const formattedDate = item.createdAt
+        ? new Date(
+            item.createdAt.seconds
+              ? item.createdAt.seconds * 1000
+              : item.createdAt
+          )
+            .toISOString()
+            .split("T")[0]
+        : "";
 
-    if (!matchesSearch) return false;
+      const s = search.toLowerCase();
 
-    // 📅 DATE RANGE FILTER
-    // If fromDate selected → only allow materials >= fromDate
-    if (fromDate && formattedDate < fromDate) return false;
+      // Search filter
+      const matchesSearch =
+        item.paperCode?.toLowerCase().includes(s) ||
+        item.paperProductCode?.toLowerCase().includes(s) ||
+        item.jobPaper?.toLowerCase().includes(s) ||
+        item.totalRunningMeter?.toString().includes(s) ||
+        formattedDate.includes(s);
 
-    // If toDate selected → only allow materials <= toDate
-    if (toDate && formattedDate > toDate) return false;
+      if (!matchesSearch) return false;
 
-    // 🏷️ CATEGORY FILTER
-    // If categoryFilter selected → only show matching category
-    if (categoryFilter && item.materialCategory !== categoryFilter) return false;
+      // Date range filter
+      if (fromDate && formattedDate < fromDate) return false;
+      if (toDate && formattedDate > toDate) return false;
 
-    return true;
-  });
+      // Category filter (only for created tab)
+      if (activeTab === "created" && categoryFilter && item.materialCategory !== categoryFilter) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // Sort by date
+    filtered.sort((a, b) => {
+      const dateA = a.createdAt?.toDate
+        ? a.createdAt.toDate()
+        : new Date(a.createdAt);
+      const dateB = b.createdAt?.toDate
+        ? b.createdAt.toDate()
+        : new Date(b.createdAt);
+      
+      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+    });
+
+    return filtered;
+  };
+
+  const filteredMaterials = getFilteredMaterials();
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredMaterials.length / itemsPerPage);
-
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
-
   const currentItems = filteredMaterials.slice(indexOfFirst, indexOfLast);
 
   const goToPage = (pageNum) => {
@@ -98,19 +129,49 @@ const MaterialList = () => {
     }
   };
 
+  const toggleSortOrder = () => {
+    setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+    setCurrentPage(1);
+  };
+
   return (
     <div className="space-y-4">
       <h1>Material In</h1>
       <hr />
 
-      {/* Buttons */}
-      <Addbtn to="/material_in/add_material"> Add Material </Addbtn>
+      {/* Add Material Button */}
+      <Addbtn to="/material_in/add_material">Add Material</Addbtn>
 
-      <div className=" relative">
+      {/* Tabs */}
+      <div className="flex gap-2 border-b-2 border-gray-200">
+        <button
+          onClick={() => handleTabChange("raw")}
+          className={`px-6 py-3 font-medium transition-all ${
+            activeTab === "raw"
+              ? "text-[#3566AD] border-b-4 border-[#3566AD]"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Raw Material
+        </button>
+        <button
+          onClick={() => handleTabChange("created")}
+          className={`px-6 py-3 font-medium transition-all ${
+            activeTab === "created"
+              ? "text-[#3566AD] border-b-4 border-[#3566AD]"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Created Material (LO/WIP)
+        </button>
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative">
         <input
           type="text"
-          placeholder="Search Job"
-          className="border border-black/20 rounded-3xl w-full p-3 pr-10 text-sm" // add padding-right for icon
+          placeholder="Search by Paper Code, Company, Material Type..."
+          className="border border-black/20 rounded-3xl w-full p-3 pr-10 text-sm"
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -120,24 +181,21 @@ const MaterialList = () => {
         <FiSearch className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
       </div>
 
-      <div className="flex gap-10 items-center">
-        {/* FROM DATE BUTTON */}
-        <div className="relative">
-          <label className="block mb-2 font-medium">From Date</label>
+      {/* Filters */}
+      <div className="flex gap-6 items-end flex-wrap">
+        {/* From Date */}
+        <div className="flex-1 min-w-[200px]">
+          <label className="block mb-2 font-medium text-sm">From Date</label>
           <input
-            label="From Date"
             type="date"
             value={fromDate}
             onChange={(e) => {
               const selectedFromDate = e.target.value;
-
-              // ✅ Check if fromDate is after toDate
               if (toDate && selectedFromDate > toDate) {
                 setDateError("From Date cannot be after To Date");
                 return;
               }
-
-              setDateError(""); // Clear error
+              setDateError("");
               setFromDate(selectedFromDate);
               setCurrentPage(1);
             }}
@@ -145,25 +203,19 @@ const MaterialList = () => {
           />
         </div>
 
-        {/* TO DATE BUTTON */}
-        <div className="relative">
-          <label className="block mb-2 font-medium">To Date</label>
+        {/* To Date */}
+        <div className="flex-1 min-w-[200px]">
+          <label className="block mb-2 font-medium text-sm">To Date</label>
           <input
-            type="text"
+            type="date"
             value={toDate}
-            placeholder="To Date"
-            onFocus={(e) => (e.target.type = "date")}
-            onBlur={(e) => !e.target.value && (e.target.type = "text")}
             onChange={(e) => {
               const selectedToDate = e.target.value;
-
-              // ✅ Check if toDate is before fromDate
               if (fromDate && selectedToDate < fromDate) {
                 setDateError("To Date cannot be before From Date");
                 return;
               }
-
-              setDateError(""); // Clear error
+              setDateError("");
               setToDate(selectedToDate);
               setCurrentPage(1);
             }}
@@ -171,51 +223,81 @@ const MaterialList = () => {
           />
         </div>
 
-        {/* MATERIAL CATEGORY FILTER DROPDOWN */}
-        <div className="relative">
-          <label className="block mb-2 font-medium">Material Category</label>
-          <select
-            value={categoryFilter}
-            onChange={(e) => {
-              setCategoryFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="border border-black/20 rounded-2xl p-3 w-full"
+        {/* Material Category - Only for Created Tab */}
+        {activeTab === "created" && (
+          <div className="flex-1 min-w-[200px]">
+            <label className="block mb-2 font-medium text-sm">Material Category</label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="border border-black/20 rounded-2xl p-3 w-full"
+            >
+              <option value="">All Categories</option>
+              <option value="LO">LO</option>
+              <option value="WIP">WIP</option>
+            </select>
+          </div>
+        )}
+
+        {/* Sort Order Toggle */}
+        <div className="flex-shrink-0">
+          <label className="block mb-2 font-medium text-sm">Sort by Date</label>
+          <button
+            onClick={toggleSortOrder}
+            className="border border-black/20 rounded-2xl p-3 px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+            title={sortOrder === "desc" ? "Newest First" : "Oldest First"}
           >
-            <option value="">All Categories</option>
-            <option value="RAW">RAW</option>
-            <option value="LO">LO</option>
-            <option value="WIP">WIP</option>
-          </select>
+            {sortOrder === "desc" ? (
+              <>
+                <FaSortAmountDown className="text-lg" />
+                <span className="text-sm">Newest First</span>
+              </>
+            ) : (
+              <>
+                <FaSortAmountUp className="text-lg" />
+                <span className="text-sm">Oldest First</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* ✅ Show error message if exists */}
+      {/* Date Error Message */}
       {dateError && (
-        <div className="text-red-600 font-medium text-sm">{dateError}</div>
+        <div className="text-red-600 font-medium text-sm bg-red-50 p-3 rounded-lg">
+          {dateError}
+        </div>
       )}
 
-      <h2>Material List</h2>
+      {/* Results Count */}
+      <div className="text-sm text-gray-600">
+        Showing {currentItems.length} of {filteredMaterials.length} materials
+      </div>
 
       {/* Table */}
       <div className="overflow-x-auto rounded-2xl shadow-lg">
         <table className="table-auto w-full rounded-xl">
-          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-xl px-3  text-white">
+          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-xl px-3 text-white">
             <tr>
               <th className="px-3 py-2 border-r-2">Date</th>
               <th className="px-4 py-2 border-r-2">Paper Code</th>
               <th className="px-4 py-2 border-r-2">Company</th>
               <th className="px-4 py-2 border-r-2">Material Type</th>
-              <th className="px-4 py-2 border-r-2">Material Category</th>
+              {activeTab === "created" && (
+                <th className="px-4 py-2 border-r-2">Material Category</th>
+              )}
               <th className="px-4 py-2 border-r-2">Total Running Meter</th>
               <th className="px-4 py-2 border-r-2">Available Running Meter</th>
-              <th className="px-4 py-2 ">Action</th>
+              <th className="px-4 py-2">Action</th>
             </tr>
           </thead>
 
           <tbody>
             {currentItems.map((item) => (
-              <tr className="text-center" key={item.id}>
+              <tr className="text-center hover:bg-gray-50" key={item.id}>
                 <td className="border px-4 py-2">
                   {item.createdAt
                     ? new Date(
@@ -225,35 +307,55 @@ const MaterialList = () => {
                       ).toLocaleDateString("en-IN")
                     : ""}
                 </td>
-
                 <td className="border px-4 py-2">{item.paperCode}</td>
                 <td className="border px-4 py-2">
                   {item.paperProductCode || "-"}
                 </td>
                 <td className="border px-4 py-2">{item.jobPaper || "-"}</td>
-                <td className="border px-4 py-2">{item.materialCategory || "-"}</td>
+                {activeTab === "created" && (
+                  <td className="border px-4 py-2">
+                    <span
+                      className={`px-2 py-1 rounded-full text-sm font-medium ${
+                        item.materialCategory === "LO"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-purple-100 text-purple-800"
+                      }`}
+                    >
+                      {item.materialCategory}
+                    </span>
+                  </td>
+                )}
                 <td className="border px-4 py-2">{item.totalRunningMeter}</td>
                 <td className="border px-4 py-2">
                   {item.availableRunningMeter}
                 </td>
                 <td className="border py-2 text-center space-x-2">
-                  {item.materialCategory === "RAW" &&
-                  item.availableRunningMeter > 0 ? (
+                  {activeTab === "raw" && item.availableRunningMeter > 0 ? (
                     <button
                       onClick={() => navigate(`edit/${item.id}`)}
-                      className="bg-[#D2D2D2] text-primary p-1 rounded text-2xl"
+                      className="bg-[#D2D2D2] text-primary p-1 rounded text-2xl hover:bg-gray-400 transition-colors"
+                      title="Edit Material"
                     >
                       <RiPencilFill />
                     </button>
-                  ) : null}
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
                 </td>
               </tr>
             ))}
 
             {currentItems.length === 0 && (
               <tr>
-                <td colSpan="8" className="text-center p-4">
-                  No materials found
+                <td
+                  colSpan={activeTab === "created" ? "8" : "7"}
+                  className="text-center p-8 text-gray-500"
+                >
+                  <div className="text-4xl mb-2">📦</div>
+                  <div className="font-medium">No materials found</div>
+                  <div className="text-sm mt-1">
+                    Try adjusting your search or filter criteria
+                  </div>
                 </td>
               </tr>
             )}
@@ -262,9 +364,9 @@ const MaterialList = () => {
       </div>
 
       {/* Pagination */}
-      <div className="flex gap-2 mt-5">
+      <div className="flex gap-2 mt-5 justify-center items-center flex-wrap">
         <button
-          className="px-4 py-2 border rounded-md"
+          className="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => goToPage(currentPage - 1)}
           disabled={currentPage === 1}
         >
@@ -275,7 +377,9 @@ const MaterialList = () => {
           <button
             key={i}
             className={`px-4 py-2 border rounded-md ${
-              currentPage === i + 1 ? "bg-blue-500 text-white" : ""
+              currentPage === i + 1
+                ? "bg-[#3566AD] text-white"
+                : "hover:bg-gray-100"
             }`}
             onClick={() => goToPage(i + 1)}
           >
@@ -284,13 +388,14 @@ const MaterialList = () => {
         ))}
 
         <button
-          className="px-4 py-2 border rounded-md"
+          className="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => goToPage(currentPage + 1)}
           disabled={currentPage === totalPages}
         >
           Next
         </button>
       </div>
+
       <Outlet />
     </div>
   );

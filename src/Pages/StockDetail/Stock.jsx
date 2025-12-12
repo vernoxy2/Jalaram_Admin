@@ -10,6 +10,7 @@ const StockReport = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [paperCodeFilter, setPaperCodeFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -33,6 +34,13 @@ const StockReport = () => {
           collection(db, "materialTransactions")
         );
         const transactions = transactionsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        // Fetch orders for customer name
+        const ordersSnapshot = await getDocs(collection(db, "ordersTest"));
+        const orders = ordersSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
@@ -160,6 +168,36 @@ const StockReport = () => {
             material.materialCategory === "LO" ||
             material.materialCategory === "WIP";
 
+          // Find customer name from orders using sourceJobCardNo
+          const matchingOrder = orders.find(
+            (order) => order.jobCardNo === material.sourceJobCardNo
+          );
+          const customerName = matchingOrder?.customerName || "-";
+
+          // Find which RAW paper codes were used to create this LO/WIP
+          // by looking at transactions that created this material
+          let usedRawPaperCodes = [];
+          if (material.materialCategory === "LO" || material.materialCategory === "WIP") {
+            // Find transactions where this material was created
+            const creationTransactions = transactions.filter((t) => {
+              if (!t.newPaperCode) return false;
+              const newCodes = t.newPaperCode.split(",").map(c => c.trim());
+              return newCodes.includes(material.paperCode);
+            });
+
+            // Get the RAW paper codes that were used in those transactions
+            creationTransactions.forEach((t) => {
+              if (t.paperProductNo) {
+                const codes = t.paperProductNo.split(",").map(c => c.trim());
+                codes.forEach(code => {
+                  if (!usedRawPaperCodes.includes(code)) {
+                    usedRawPaperCodes.push(code);
+                  }
+                });
+              }
+            });
+          }
+
           return {
             id: material.id,
             date: materialDate,
@@ -176,7 +214,11 @@ const StockReport = () => {
             available: material.availableRunningMeter || 0,
             sourceJobCardNo: material.sourceJobCardNo || "-",
             sourceStage: material.sourceStage || "-",
+            usedRawPaperCodes: usedRawPaperCodes, // Array of RAW paper codes used
             isActive: material.isActive !== false,
+            customerName: customerName,
+            paperSize: material.paperSize || "-",
+            numberOfRolls: material.numberOfRolls || 0,
           };
         });
 
@@ -201,12 +243,31 @@ const StockReport = () => {
       item.paperCode.toLowerCase().includes(s) ||
       item.paperProductCode.toLowerCase().includes(s) ||
       item.jobPaper.toLowerCase().includes(s) ||
-      item.sourceJobCardNo.toLowerCase().includes(s);
+      item.sourceJobCardNo.toLowerCase().includes(s) ||
+      item.customerName.toLowerCase().includes(s);
 
     if (!matchesSearch) return false;
     if (fromDate && formattedDate < fromDate) return false;
     if (toDate && formattedDate > toDate) return false;
     if (categoryFilter !== "ALL" && item.materialCategory !== categoryFilter) {
+      return false;
+    }
+
+    // Paper Code History Filter: Show RAW material and all LO/WIP created from it
+    if (paperCodeFilter) {
+      // Show the RAW material itself
+      if (item.paperCode === paperCodeFilter && item.materialCategory === "RAW") {
+        return true;
+      }
+      
+      // Show LO/WIP materials that were created using this RAW paper
+      if (
+        (item.materialCategory === "LO" || item.materialCategory === "WIP") &&
+        item.usedRawPaperCodes.includes(paperCodeFilter)
+      ) {
+        return true;
+      }
+      
       return false;
     }
 
@@ -256,6 +317,14 @@ const StockReport = () => {
     }
   );
 
+  // Get unique paper codes for filter dropdown
+  const uniquePaperCodes = [...new Set(
+    stockData
+      .filter(item => item.materialCategory === "RAW")
+      .map(item => item.paperCode)
+      .filter(code => code !== "-")
+  )].sort();
+
   // Export to CSV
   const exportToCSV = () => {
     const headers = [
@@ -264,6 +333,9 @@ const StockReport = () => {
       "Company",
       "Material Type",
       "Category",
+      "Customer Name",
+      "Paper Size",
+      "No. of Rolls",
       "Purchased",
       "Created",
       "Used",
@@ -281,6 +353,9 @@ const StockReport = () => {
       item.paperProductCode,
       item.jobPaper,
       item.materialCategory,
+      item.customerName,
+      item.paperSize,
+      item.numberOfRolls,
       formatNumber(item.purchased),
       formatNumber(item.created),
       formatNumber(item.used),
@@ -368,7 +443,7 @@ const StockReport = () => {
         <div className="flex-1 min-w-[200px] relative">
           <input
             type="text"
-            placeholder="Search by Paper Code, Company, Job..."
+            placeholder="Search by Paper Code, Company, Job, Customer..."
             className="border border-black/20 rounded-3xl w-full p-3 pr-10 text-sm"
             value={search}
             onChange={(e) => {
@@ -393,6 +468,25 @@ const StockReport = () => {
             <option value="RAW">RAW</option>
             <option value="LO">LO</option>
             <option value="WIP">WIP</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block mb-2 font-medium text-sm">Paper Code History</label>
+          <select
+            value={paperCodeFilter}
+            onChange={(e) => {
+              setPaperCodeFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="border border-black/20 rounded-2xl p-3 min-w-[150px]"
+          >
+            <option value="">All Papers</option>
+            {uniquePaperCodes.map((code) => (
+              <option key={code} value={code}>
+                {code}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -431,6 +525,16 @@ const StockReport = () => {
         </button>
       </div>
 
+      {paperCodeFilter && (
+        <div className="bg-blue-50 p-3 rounded-lg">
+          <p className="text-sm">
+            <strong>📜 Showing history for Paper Code: {paperCodeFilter}</strong>
+            <br />
+            Displaying the RAW material and all LO/WIP materials created from it during production stages.
+          </p>
+        </div>
+      )}
+
       {/* Table */}
       <div className="overflow-x-auto rounded-2xl shadow-lg">
         <table className="table-auto w-full rounded-xl">
@@ -441,6 +545,9 @@ const StockReport = () => {
               <th className="px-3 py-3 border-r-2">Company</th>
               <th className="px-3 py-3 border-r-2">Material Type</th>
               <th className="px-3 py-3 border-r-2">Category</th>
+              <th className="px-3 py-3 border-r-2">Customer</th>
+              <th className="px-3 py-3 border-r-2">Paper Size</th>
+              <th className="px-3 py-3 border-r-2">Rolls</th>
               <th className="px-3 py-3 border-r-2 bg-blue-900">Purchased</th>
               <th className="px-3 py-3 border-r-2 bg-blue-900">Created</th>
               <th className="px-3 py-3 border-r-2">Used</th>
@@ -479,6 +586,9 @@ const StockReport = () => {
                     {item.materialCategory}
                   </span>
                 </td>
+                <td className="border px-3 py-2 text-sm">{item.customerName}</td>
+                <td className="border px-3 py-2 text-sm">{item.paperSize}</td>
+                <td className="border px-3 py-2 text-sm">{item.numberOfRolls || "-"}</td>
                 <td className="border px-3 py-2 text-sm font-semibold bg-blue-50">
                   {item.purchased > 0 ? formatNumber(item.purchased) : "-"}
                 </td>
@@ -511,7 +621,7 @@ const StockReport = () => {
 
             {currentItems.length === 0 && (
               <tr>
-                <td colSpan="14" className="text-center p-4 text-gray-500">
+                <td colSpan="17" className="text-center p-4 text-gray-500">
                   No stock data found
                 </td>
               </tr>
@@ -520,7 +630,7 @@ const StockReport = () => {
 
           <tfoot className="bg-gray-100 font-bold">
             <tr className="text-center">
-              <td colSpan="5" className="border px-3 py-3 text-right">
+              <td colSpan="8" className="border px-3 py-3 text-right">
                 TOTALS:
               </td>
               <td className="border px-3 py-3 text-blue-600 bg-blue-50">
@@ -605,15 +715,18 @@ const StockReport = () => {
           <li>
             <strong>Available:</strong> Current stock available for use
           </li>
+          <li>
+            <strong>Paper Code History Filter:</strong> Select a RAW paper code to see its complete journey - the original RAW material purchase and all LO/WIP materials that were created from it during production.
+          </li>
           <li className="bg-yellow-50 p-2 rounded mt-2">
             <strong>💡 Formula for LO/WIP:</strong> Used = Created - Waste - LO
             - WIP. This prevents double-counting as material flows through
             stages.
           </li>
         </ul>
+        </div>
       </div>
-    </div>
-  );
+        );
 };
 
 export default StockReport;
