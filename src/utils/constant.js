@@ -6,7 +6,7 @@ export const materialTypeList = [
   { label: "Silver Paper", value: "Silver Paper" },
 ];
 
-export const companyList = [
+export const paperProductCodeData = [
   { label: "Capri", value: "Capri" },
   { label: "Krutika", value: "Krutika" },
   { label: "Stiqa", value: "Stiqa" },
@@ -149,3 +149,12 @@ export const labelType = [
   { label: "Printing", value: "Printing" },
   { label: "Plain", value: "Plain" },
 ];
+
+  export const jobStatus = [
+    {label: 'All Jobs', value: 'allJobs'},
+    {label: 'Printing', value: 'printingJobs'},
+    {label: 'Punching', value: 'punchingJobs'},
+    {label: 'Slitting ', value: 'slittingJobs'},
+    {label: 'Pending ', value: 'Pending'},
+    {label: 'Completed ', value: 'completed'},
+  ];

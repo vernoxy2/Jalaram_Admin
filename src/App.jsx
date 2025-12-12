@@ -4,11 +4,12 @@ import MaterialList from "./Pages/MaterialList/MaterialList";
 import AddMaterial from "./Pages/MaterialList/AddMaterial";
 import JobCard from "./Pages/JobCard/JobCard";
 import AddJob from "./Pages/JobCard/AddJob";
-import JobDetailScreen from "./Components/JobDetailScreen";
 import AdminLayout from "./Components/Layout/AdminLayout";
 import Dashboard from "./Pages/Dashboard";
 import MaterialIssueForm from "./Pages/Issue Material/MaterialIssueForm";
 import MaterialIssueRequestList from "./Pages/Issue Material/MaterialIssueRequestList";
+import Stock from "./Pages/StockDetail/Stock";
+import JobDetailsScreen from "./Pages/JobCard/JobDetailScreen";
 
 const App = () => {
   return (
@@ -20,13 +21,11 @@ const App = () => {
           <Route index element={<Dashboard />} />
           <Route path="home" element={<Home />} />
 
-          {/* JobCard Routes */}
-          <Route path="jobcard">
-            <Route index element={<JobCard />} />
-            <Route path="addjob" element={<AddJob />} />
-            <Route path="edit/:id" element={<AddJob />} />
-            <Route path="detail/:id" element={<JobDetailScreen />} />
-          </Route>
+          {/* JobCard Routes - FIXED */}
+          <Route path="jobcard" element={<JobCard />} />
+          <Route path="jobcard/addjob" element={<AddJob />} />
+          <Route path="jobcard/edit/:id" element={<AddJob />} />
+          <Route path="jobcard/detail/:id" element={<JobDetailsScreen />} />
 
           {/* Material Routes */}
           <Route path="material_in">
@@ -38,7 +37,7 @@ const App = () => {
           {/* Material Issue */}
           <Route path="issue_material">
             <Route index element={<MaterialIssueRequestList />} />
-            <Route path=":rollId" element={<MaterialIssueForm />} />
+            <Route path=":id" element={<MaterialIssueForm />} />
           </Route>
 
           {/* Dispatch */}
@@ -48,7 +47,7 @@ const App = () => {
           <Route path="total_inventory" element={<Dashboard />} />
 
           {/* Stock */}
-          <Route path="stock" element={<Dashboard />} />
+          <Route path="stock" element={<Stock />} />
         </Route>
       </Routes>
     </Router>
