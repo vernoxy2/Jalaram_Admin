@@ -10,13 +10,25 @@ import MaterialIssueForm from "./Pages/Issue Material/MaterialIssueForm";
 import MaterialIssueRequestList from "./Pages/Issue Material/MaterialIssueRequestList";
 import Stock from "./Pages/StockDetail/Stock";
 import JobDetailsScreen from "./Pages/JobCard/JobDetailScreen";
+import Login from "./Pages/Login";
+import ProtectedRoute from "./Components/ProtectedRoute";
 
 const App = () => {
   return (
     <Router>
       <Routes>
-        {/* Layout Route */}
-        <Route path="/" element={<AdminLayout />}>
+        {/* Public Routes */}
+        <Route path="/login" element={<Login />} />
+
+        {/* Protected Routes */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
           {/* Nested Routes */}
           <Route index element={<Dashboard />} />
           <Route path="home" element={<Home />} />
