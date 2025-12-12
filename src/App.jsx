@@ -53,10 +53,10 @@ const App = () => {
           </Route>
 
           {/* Dispatch */}
-          <Route path="dispatch" element={<Dashboard />} />
+          <Route path="dispatch" />
 
           {/* Total Inventory */}
-          <Route path="total_inventory" element={<Dashboard />} />
+          <Route path="total_inventory"  />
 
           {/* Stock */}
           <Route path="stock" element={<Stock />} />

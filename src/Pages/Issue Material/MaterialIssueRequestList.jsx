@@ -194,7 +194,7 @@ const MaterialIssueRequestList = () => {
                 <td className="border px-4 py-2">
                   {!item.isIssued ? (
                     <button
-                      className="bg-primary text-white px-3 py-1 rounded-lg"
+                      className="bg-[#D2D2D2]/40 border hover:border-primary font-semibold text-primary px-3 py-1 rounded-lg"
                       // onClick={() => navigate(`${item.id}`)}
                       onClick={() => navigate(`/issue_material/${item.id}`)}
                     >

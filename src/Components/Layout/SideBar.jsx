@@ -32,7 +32,7 @@ const Sidebar = () => {
       {/* Desktop Sidebar */}
       <div
         className={`hidden md:flex flex-col h-full  ${
-          isOpen ? "w-96" : "w-16 hidden"
+          isOpen ? "w-96" : "w-16 "
         } bg-gradient-to-b from-[#102F5C] to-[#3566AD] text-white transition-all duration-300 `}
       >
         <div className="flex items-center justify-between p-4 border-gray-700">
