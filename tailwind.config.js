@@ -1,12 +1,14 @@
 /** @type {import('tailwindcss').Config} */
-export default {
+import withMT from "@material-tailwind/react/utils/withMT";
+
+export default withMT({
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
         primary: "#3668B1",
         secondary: "#3566AD",
-        textcolor:"#848282",
+        textcolor: "#848282",
       },
       fontFamily: {
         inter: ["Inter", "sans-serif"],
@@ -24,4 +26,4 @@ export default {
     },
   },
   plugins: [],
-};
+});

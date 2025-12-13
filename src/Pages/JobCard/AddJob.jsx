@@ -35,7 +35,10 @@ import {
 } from "../../utils/constant";
 import { startTransition } from "react";
 import PrimaryBtn from "../../Components/PrimaryBtn";
-import PrimaryBackBtn from "../../Components/PrimaryBackBtn";
+import PrimaryBackBtn from "../../Components/BackButton";
+import { FaChevronLeft } from "react-icons/fa6";
+import BackButton from "../../Components/BackButton";
+import SuccessPopup from "../../Components/SuccessPopup";
 
 const db = getFirestore(getApp()); // assumes firebase app already initialized
 
@@ -60,6 +63,7 @@ const AddJob = () => {
 
   // message for success/error
   const [message, setMessage] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
 
   // Mirror RN state names
   const [poNo, setPoNo] = useState("");
@@ -299,7 +303,7 @@ const AddJob = () => {
         jobPaper: findOption(materialTypeList, jobPaper),
         jobQty,
         totalPaperRequired,
-        requiredMaterial:totalPaperRequired,
+        requiredMaterial: totalPaperRequired,
         requestStatus: "Pending",
         requestType: "Initial",
         createdAt: serverTimestamp(),
@@ -331,6 +335,7 @@ const AddJob = () => {
           await addDoc(collection(db, "materialRequest"), materialRequestData);
         }
 
+        setShowPopup(true);
         setMessage("Job updated successfully");
       } else {
         // Check duplicate jobCardNo
@@ -358,6 +363,7 @@ const AddJob = () => {
           orderId: orderRef.id,
         });
 
+        setShowPopup(true);
         setMessage("Job created successfully");
       }
 
@@ -388,7 +394,7 @@ const AddJob = () => {
       // }
 
       // navigate back a bit after a short feedback
-      setTimeout(() => navigate("/jobcard"), 900);
+      setTimeout(() => navigate(-1), 1200);
     } catch (error) {
       console.error("Submit Error:", error);
       alert("Something went wrong. Check console.");
@@ -434,352 +440,367 @@ const AddJob = () => {
   };
 
   return (
-    <div className="space-y-5">
-      <h1>{isEdit ? "Edit Job" : "Add New Job"}</h1>
-      <hr className="mb-20" />
+    <>
+      <div className="space-y-5">
+        <div className="flex justify-between items-baseline">
+          <h1>{isEdit ? "Edit Job" : "Add New Job"}</h1>
+          <BackButton />
+        </div>
+        <hr className="mb-20" />
 
-      <div className="py-16 mt-10 space-y-10 bg-gray-100 container rounded-2xl">
-        <form
-          onSubmit={handleSubmit}
-          className="grid md:grid-cols-2 gap-8 w-full "
-        >
-          {/* PO No */}
-          {/* <PrimaryInput
+        <div className="py-16 mt-10 space-y-10 bg-gray-100 container rounded-2xl">
+          <form
+            onSubmit={handleSubmit}
+            className="grid md:grid-cols-2 gap-8 w-full "
+          >
+            {/* PO No */}
+            {/* <PrimaryInput
             type={"text"}
             name="poNo"
             placeholder="PO No"
             value={poNo}
             onChange={(e) => setPoNo(e.target.value)}
           /> */}
-          <div>
-            {/* <label className="font-medium">
+            <div>
+              {/* <label className="font-medium">
               PO No <span className="text-red-500">*</span>
             </label> */}
 
+              <PrimaryInput
+                type="text"
+                name="poNo"
+                placeholder="PO No"
+                value={poNo}
+                onChange={(e) => {
+                  setPoNo(e.target.value);
+                  setErrors((prev) => ({ ...prev, poNo: "" })); // 🔥 remove error on type
+                }}
+              />
+
+              {errors.poNo && (
+                <p className="text-red-600 text-sm">{errors.poNo}</p>
+              )}
+            </div>
+
+            {/* Date */}
             <PrimaryInput
-              type="text"
-              name="poNo"
-              placeholder="PO No"
-              value={poNo}
-              onChange={(e) => {
-                setPoNo(e.target.value);
-                setErrors((prev) => ({ ...prev, poNo: "" })); // 🔥 remove error on type
-              }}
+              type={"date"}
+              name="jobDate"
+              placeholder="Job Date"
+              value={dateInputValue(jobDate)}
+              onChange={(e) => setJobDate(new Date(e.target.value))}
             />
 
-            {errors.poNo && (
-              <p className="text-red-600 text-sm">{errors.poNo}</p>
-            )}
-          </div>
+            {/* Job Name */}
+            <div>
+              <PrimaryInput
+                type="text"
+                name="jobName"
+                placeholder="Job Name"
+                value={jobName}
+                onChange={(e) => {
+                  setJobName(e.target.value);
+                  setErrors((prev) => ({ ...prev, jobName: "" }));
+                }}
+              />
 
-          {/* Date */}
-          <PrimaryInput
-            type={"date"}
-            name="jobDate"
-            placeholder="Job Date"
-            value={dateInputValue(jobDate)}
-            onChange={(e) => setJobDate(new Date(e.target.value))}
-          />
+              {errors.jobName && (
+                <p className="text-red-600 text-sm">{errors.jobName}</p>
+              )}
+            </div>
 
-          {/* Job Name */}
-          <div>
-            <PrimaryInput
-              type="text"
-              name="jobName"
-              placeholder="Job Name"
-              value={jobName}
-              onChange={(e) => {
-                setJobName(e.target.value);
-                setErrors((prev) => ({ ...prev, jobName: "" }));
-              }}
-            />
-
-            {errors.jobName && (
-              <p className="text-red-600 text-sm">{errors.jobName}</p>
-            )}
-          </div>
-
-          {/* Job Card No */}
-          <div>
-            <PrimaryInput
-              type={"text"}
-              name="jobCardNo"
-              placeholder="Job Card No"
-              value={jobCardNo}
-              onChange={(e) => {
-                setJobCardNo(e.target.value);
-                setErrors((prev) => ({ ...prev, jobCardNo: "" }));
-              }}
-            />
-            {errors.jobCardNo && (
-              <p className="text-red-600 text-sm">{errors.jobCardNo}</p>
-            )}
-          </div>
-          {/* Customer Name */}
-          <div>
-            <PrimaryInput
-              type={"text"}
-              name="customerName"
-              placeholder="Customer Name"
-              value={customerName}
-              onChange={(e) => {
-                setCustomerName(e.target.value);
-                setErrors((prev) => ({ ...prev, customerName: "" }));
-              }}
-            />
-            {errors.customerName && (
-              <p className="text-red-600 text-sm">{errors.customerName}</p>
-            )}
-          </div>
-          {/* Job Original Size */}
-          {/* <PrimaryInput
+            {/* Job Card No */}
+            <div>
+              <PrimaryInput
+                type={"text"}
+                name="jobCardNo"
+                placeholder="Job Card No"
+                value={jobCardNo}
+                onChange={(e) => {
+                  setJobCardNo(e.target.value);
+                  setErrors((prev) => ({ ...prev, jobCardNo: "" }));
+                }}
+              />
+              {errors.jobCardNo && (
+                <p className="text-red-600 text-sm">{errors.jobCardNo}</p>
+              )}
+            </div>
+            {/* Customer Name */}
+            <div>
+              <PrimaryInput
+                type={"text"}
+                name="customerName"
+                placeholder="Customer Name"
+                value={customerName}
+                onChange={(e) => {
+                  setCustomerName(e.target.value);
+                  setErrors((prev) => ({ ...prev, customerName: "" }));
+                }}
+              />
+              {errors.customerName && (
+                <p className="text-red-600 text-sm">{errors.customerName}</p>
+              )}
+            </div>
+            {/* Job Original Size */}
+            {/* <PrimaryInput
             type={"text"}
             name="jobSize"
             placeholder="Job Original Size"
             value={jobSize}
             onChange={(e) => setJobSize(e.target.value)}
           /> */}
-          {/* Job Length */}
-          <div>
-            <PrimaryInput
-              type={"number"}
-              name="jobLength"
-              placeholder="Job Length"
-              value={jobLength}
-              onChange={(e) => {
-                handleJobLengthChange(e);
-                setErrors((prev) => ({ ...prev, jobLength: "" }));
-              }}
-            />
-            {errors.jobLength && (
-              <p className="text-red-600 text-sm">{errors.jobLength}</p>
-            )}
-          </div>
-          <div>
-            {/* Job Width */}
-            <PrimaryInput
-              type={"number"}
-              name="jobWidth"
-              placeholder="Job Width"
-              value={jobWidth}
-              onChange={(e) => {
-                handleJobWidthChange(e);
-                setErrors((prev) => ({ ...prev, jobWidth: "" }));
-              }}
-            />
-            {errors.jobWidth && (
-              <p className="text-red-600 text-sm">{errors.jobWidth}</p>
-            )}
-          </div>
-          {/* Job Qty */}
-          <div>
-            <PrimaryInput
-              type={"number"}
-              name="jobQty"
-              placeholder="Job Qty"
-              value={jobQty}
-              onChange={(e) => {
-                handleJobQtyChange(e);
-                setErrors((prev) => ({ ...prev, jobQty: "" }));
-              }}
-            />
+            {/* Job Length */}
+            <div>
+              <PrimaryInput
+                type={"number"}
+                name="jobLength"
+                placeholder="Job Length"
+                value={jobLength}
+                onChange={(e) => {
+                  handleJobLengthChange(e);
+                  setErrors((prev) => ({ ...prev, jobLength: "" }));
+                }}
+              />
+              {errors.jobLength && (
+                <p className="text-red-600 text-sm">{errors.jobLength}</p>
+              )}
+            </div>
+            <div>
+              {/* Job Width */}
+              <PrimaryInput
+                type={"number"}
+                name="jobWidth"
+                placeholder="Job Width"
+                value={jobWidth}
+                onChange={(e) => {
+                  handleJobWidthChange(e);
+                  setErrors((prev) => ({ ...prev, jobWidth: "" }));
+                }}
+              />
+              {errors.jobWidth && (
+                <p className="text-red-600 text-sm">{errors.jobWidth}</p>
+              )}
+            </div>
+            {/* Job Qty */}
+            <div>
+              <PrimaryInput
+                type={"number"}
+                name="jobQty"
+                placeholder="Job Qty"
+                value={jobQty}
+                onChange={(e) => {
+                  handleJobQtyChange(e);
+                  setErrors((prev) => ({ ...prev, jobQty: "" }));
+                }}
+              />
 
-            {errors.jobQty && (
-              <p className="text-red-600 text-sm">{errors.jobQty}</p>
-            )}
-          </div>
-          {/* Total Paper Required - can be manually edited */}
-          <div>
-            <PrimaryInput
-              type={"text"}
-              name="totalPaperRequired"
-              placeholder="Total Paper Required"
-              value={totalPaperRequired}
-              onChange={(e) => {
-                setTotalPaperRequired(e.target.value);
-                setErrors((prev) => ({ ...prev, totalPaperRequired: "" }));
-              }}
-            />
-            {errors.totalPaperRequired && (
-              <p className="text-red-600 text-sm">
-                {errors.totalPaperRequired}
-              </p>
-            )}
-          </div>
+              {errors.jobQty && (
+                <p className="text-red-600 text-sm">{errors.jobQty}</p>
+              )}
+            </div>
+            {/* Total Paper Required - can be manually edited */}
+            <div>
+              <PrimaryInput
+                type={"text"}
+                name="totalPaperRequired"
+                placeholder="Total Paper Required"
+                value={totalPaperRequired}
+                onChange={(e) => {
+                  setTotalPaperRequired(e.target.value);
+                  setErrors((prev) => ({ ...prev, totalPaperRequired: "" }));
+                }}
+              />
+              {errors.totalPaperRequired && (
+                <p className="text-red-600 text-sm">
+                  {errors.totalPaperRequired}
+                </p>
+              )}
+            </div>
 
-          {/* Job Paper / Film Material */}
-          {/* <label className="font-medium">Job Paper / File Material:</label> */}
-          <select
-            name="jobPaper"
-            value={jobPaper}
-            onChange={(e) => setJobPaper(e.target.value)}
-            className="inputStyle"
-          >
-            <option disabled value="" className="text-[#848282]">
-              Job Paper/Film Material:
-            </option>
-            {materialTypeList.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Printing Plate Size */}
-          {/* <label className="font-medium">Printing Plate Size:</label> */}
-          <select
-            name="plateSize"
-            value={plateSize}
-            onChange={(e) => setPlateSize(e.target.value)}
-            className="inputStyle"
-          >
-            <option value="">Select Printing Plate Size</option>
-            {printingPlateSize.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Across Ups */}
-          {/* <label className="font-medium">Across Ups:</label> */}
-          <select
-            name="upsAcross"
-            value={upsAcrossValue}
-            onChange={(e) => setUpsAcrossValue(e.target.value)}
-            className="inputStyle"
-          >
-            <option value="">Select Across Ups</option>
-            {upsAcross.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Across Gap */}
-          <PrimaryInput
-            type={"number"}
-            name="acrossGap"
-            placeholder="Across Gap"
-            value={acrossGap}
-            onChange={(e) => setAcrossGap(e.target.value)}
-          />
-          {/* <label className="font-medium">Across Gap:</label> */}
-
-          {/* Around */}
-          {/* <label className="font-medium">Around:</label> */}
-          <select
-            name="around"
-            value={aroundValue}
-            onChange={(e) => setAroundValue(e.target.value)}
-            className="inputStyle"
-          >
-            <option value="">Select Around</option>
-            {around.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Around Gap */}
-          <PrimaryInput
-            type={"number"}
-            name="aroundGap"
-            placeholder="Around Gap"
-            value={aroundGap}
-            onChange={(e) => setAroundGap(e.target.value)}
-          />
-          {/* <label className="font-medium">Around Gap:</label> */}
-
-          {/* Teeth Size */}
-          {/* <label className="font-medium">Teeth Size:</label> */}
-          <select
-            name="teethSize"
-            value={teethSizeValue}
-            onChange={(e) => setTeethSizeValue(e.target.value)}
-            className="inputStyle"
-          >
-            <option value="">Select Teeth Size</option>
-            {teethSize.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Blocks */}
-          {/* <label className="font-medium">Blocks:</label> */}
-          <select
-            name="blocks"
-            value={blocksValue}
-            onChange={(e) => setBlocksValue(e.target.value)}
-            className="inputStyle"
-          >
-            <option value="">Select Blocks</option>
-            {blocks.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Winding Direction */}
-          {/* <label className="font-medium">Winding Direction:</label> */}
-          <select
-            name="windingDirection"
-            value={windingDirectionValue}
-            onChange={(e) => setWindingDirectionValue(e.target.value)}
-            className="inputStyle"
-          >
-            <option value="">Select Winding Direction</option>
-            {windingDirection.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Label Type */}
-          {/* <label className="font-medium">Label Type:</label> */}
-          <div>
+            {/* Job Paper / Film Material */}
+            {/* <label className="font-medium">Job Paper / File Material:</label> */}
             <select
-              name="labelType"
-              value={selectedLabelType}
-              onChange={(e) => {
-                setSelectedLabelType(e.target.value);
-                setErrors((prev) => ({ ...prev, selectedLabelType: "" }));
-              }}
+              name="jobPaper"
+              value={jobPaper}
+              onChange={(e) => setJobPaper(e.target.value)}
               className="inputStyle"
             >
-              <option value="">Select Label type</option>
-              {labelType.map((item) => (
+              <option disabled value="" className="text-[#848282]">
+                Job Paper/Film Material:
+              </option>
+              {materialTypeList.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
                 </option>
               ))}
             </select>
-            {errors.selectedLabelType && (
-              <p className="text-red-600 text-sm">{errors.selectedLabelType}</p>
-            )}
-          </div>
-        </form>
-        <PrimaryBtn
-          onClick={handleSubmit}
-          className=" w-full mx-auto md:col-span-2"
-        >
-          Submit
-        </PrimaryBtn>
-        <PrimaryBackBtn to={"/jobcard"} className="w-full">
-          Back
-        </PrimaryBackBtn>
 
-        {message && (
-          <div className="mt-4 text-green-600 font-bold text-lg">{message}</div>
-        )}
+            {/* Printing Plate Size */}
+            {/* <label className="font-medium">Printing Plate Size:</label> */}
+            <select
+              name="plateSize"
+              value={plateSize}
+              onChange={(e) => setPlateSize(e.target.value)}
+              className="inputStyle"
+            >
+              <option value="">Select Printing Plate Size</option>
+              {printingPlateSize.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Across Ups */}
+            {/* <label className="font-medium">Across Ups:</label> */}
+            <select
+              name="upsAcross"
+              value={upsAcrossValue}
+              onChange={(e) => setUpsAcrossValue(e.target.value)}
+              className="inputStyle"
+            >
+              <option value="">Select Across Ups</option>
+              {upsAcross.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Across Gap */}
+            <PrimaryInput
+              type={"number"}
+              name="acrossGap"
+              placeholder="Across Gap"
+              value={acrossGap}
+              onChange={(e) => setAcrossGap(e.target.value)}
+            />
+            {/* <label className="font-medium">Across Gap:</label> */}
+
+            {/* Around */}
+            {/* <label className="font-medium">Around:</label> */}
+            <select
+              name="around"
+              value={aroundValue}
+              onChange={(e) => setAroundValue(e.target.value)}
+              className="inputStyle"
+            >
+              <option value="">Select Around</option>
+              {around.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Around Gap */}
+            <PrimaryInput
+              type={"number"}
+              name="aroundGap"
+              placeholder="Around Gap"
+              value={aroundGap}
+              onChange={(e) => setAroundGap(e.target.value)}
+            />
+            {/* <label className="font-medium">Around Gap:</label> */}
+
+            {/* Teeth Size */}
+            {/* <label className="font-medium">Teeth Size:</label> */}
+            <select
+              name="teethSize"
+              value={teethSizeValue}
+              onChange={(e) => setTeethSizeValue(e.target.value)}
+              className="inputStyle"
+            >
+              <option value="">Select Teeth Size</option>
+              {teethSize.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Blocks */}
+            {/* <label className="font-medium">Blocks:</label> */}
+            <select
+              name="blocks"
+              value={blocksValue}
+              onChange={(e) => setBlocksValue(e.target.value)}
+              className="inputStyle"
+            >
+              <option value="">Select Blocks</option>
+              {blocks.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Winding Direction */}
+            {/* <label className="font-medium">Winding Direction:</label> */}
+            <select
+              name="windingDirection"
+              value={windingDirectionValue}
+              onChange={(e) => setWindingDirectionValue(e.target.value)}
+              className="inputStyle"
+            >
+              <option value="">Select Winding Direction</option>
+              {windingDirection.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Label Type */}
+            {/* <label className="font-medium">Label Type:</label> */}
+            <div>
+              <select
+                name="labelType"
+                value={selectedLabelType}
+                onChange={(e) => {
+                  setSelectedLabelType(e.target.value);
+                  setErrors((prev) => ({ ...prev, selectedLabelType: "" }));
+                }}
+                className="inputStyle"
+              >
+                <option value="">Select Label type</option>
+                {labelType.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+              {errors.selectedLabelType && (
+                <p className="text-red-600 text-sm">
+                  {errors.selectedLabelType}
+                </p>
+              )}
+            </div>
+          </form>
+          <PrimaryBtn
+            onClick={handleSubmit}
+            className=" w-full mx-auto md:col-span-2"
+          >
+            Submit
+          </PrimaryBtn>
+
+          {message && (
+            <div className="mt-4 text-green-600 font-bold text-lg">
+              {message}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+      {showPopup && (
+        <SuccessPopup
+          message={
+            isEdit ? "Job updated successfully!" : "Job added successfully!"
+          }
+          show={showPopup}
+          onClose={() => setShowPopup(false)}
+        />
+      )}
+    </>
   );
 };
 

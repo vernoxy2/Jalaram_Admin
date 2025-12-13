@@ -13,6 +13,7 @@ import JobDetailsScreen from "./Pages/JobCard/JobDetailScreen";
 import Login from "./Pages/Login";
 import ProtectedRoute from "./Components/ProtectedRoute";
 
+
 const App = () => {
   return (
     <Router>

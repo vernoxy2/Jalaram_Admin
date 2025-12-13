@@ -16,6 +16,8 @@ import { db } from "../../firebase";
 import moment from "moment";
 import PrimaryBtn from "../../Components/PrimaryBtn";
 import Addbtn from "../../Components/Addbtn";
+import BackButton from "../../Components/BackButton";
+import SuccessPopup from "../../Components/SuccessPopup";
 
 const PrimaryInput = ({ type, value, onChange, placeholder }) => {
   return (
@@ -41,6 +43,7 @@ const AddMaterial = () => {
   const [paperSize, setPaperSize] = useState("");
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
 
   /* ---------------------------------------------------
      LOAD DATA IN EDIT MODE
@@ -151,7 +154,8 @@ const AddMaterial = () => {
           updatedAt: serverTimestamp(),
         });
 
-        navigate("/material_in");
+        setShowPopup(true);
+        setTimeout(() => navigate("/material_in"), 1200);
         return;
       }
 
@@ -212,8 +216,9 @@ const AddMaterial = () => {
           createdBy: "Admin",
         });
       }
+      setShowPopup(true);
       setMessage("Materials added successfully!");
-      setTimeout(() => navigate("/material_in"), 900);
+      setTimeout(() => navigate("/material_in"), 1200);
     } catch (error) {
       console.error(error);
       alert("Error while saving!");
@@ -221,8 +226,12 @@ const AddMaterial = () => {
   };
 
   return (
+    <>
     <div className="space-y-5">
-      <h1>{isEdit ? "Edit Material" : "Add Material"}</h1>
+      <div className="flex justify-between items-baseline">
+        <h1>{isEdit ? "Edit Material" : "Add Material"}</h1>
+        <BackButton />
+      </div>
       <hr />
       <div className="py-16 mt-10 space-y-10 bg-gray-100 container rounded-2xl">
         <form onSubmit={handleSubmit} className="space-y-10">
@@ -353,15 +362,22 @@ const AddMaterial = () => {
             <PrimaryBtn className="w-full" type="submit">
               {isEdit ? "Update" : "Submit"}
             </PrimaryBtn>
-            {message && (
+
+            {/* {message && (
               <div className="mt-4 text-green-600 font-bold text-lg">
-                {message}
+              {message}
               </div>
-            )}
+              )} */}
           </div>
         </form>
       </div>
     </div>
+      <SuccessPopup
+        show={showPopup}
+        onClose={() => setShowPopup(false)}
+        message={isEdit ? "Material updated successfully!" : "Material added successfully!"}
+      />
+    </>
   );
 };
 

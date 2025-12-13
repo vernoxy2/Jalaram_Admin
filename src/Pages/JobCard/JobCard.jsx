@@ -7,6 +7,8 @@ import { FiSearch } from "react-icons/fi";
 import { MdCalendarMonth } from "react-icons/md";
 import { RiPencilFill } from "react-icons/ri";
 import { jobStatus } from "../../utils/constant";
+import { Input } from "@material-tailwind/react";
+import { TextField } from "@mui/material";
 
 const JobCard = () => {
   const [jobs, setJobs] = useState([]);
@@ -131,7 +133,7 @@ const JobCard = () => {
       </div>
 
       {/* Search */}
-      <div className=" relative">
+      {/* <div className=" relative">
         <input
           type="text"
           placeholder="Search Job"
@@ -143,7 +145,21 @@ const JobCard = () => {
           }}
         />
         <FiSearch className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-      </div>
+      </div> */}
+      <TextField
+        id="outlined-basic"
+        label="Search Job"
+        variant="standard"
+        fullWidth
+        className="rounded-3xl"
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setCurrentPage(1);
+        }}
+      />
+      
+
 
       {/* Buttons */}
       {/* Date Filter Buttons */}
@@ -262,12 +278,12 @@ const JobCard = () => {
                   onClick={(e) => e.stopPropagation()}
                 >
                   {job.jobStatus?.toLowerCase() !== "completed" && (
-                      <button
-                        onClick={() => navigate(`edit/${job.id}`)}
-                        className="bg-[#D2D2D2] text-primary p-1 rounded text-2xl"
-                      >
-                        <RiPencilFill />
-                      </button>
+                    <button
+                      onClick={() => navigate(`edit/${job.id}`)}
+                      className="bg-[#D2D2D2] text-primary p-1 rounded text-2xl"
+                    >
+                      <RiPencilFill />
+                    </button>
                   )}
                 </td>
               </tr>
@@ -316,6 +332,7 @@ const JobCard = () => {
       <main className="px-6 py-10 pr-24 w-full ">
         <Outlet /> {/* This renders nested route components */}
       </main>
+      
     </div>
   );
 };

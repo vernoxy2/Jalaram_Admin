@@ -13,6 +13,8 @@ const MaterialIssueRequestList = () => {
   const [toDate, setToDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [dateError, setDateError] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
+
   const itemsPerPage = 10;
 
   // 🔥 FETCH MATERIAL REQUEST DATA

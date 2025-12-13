@@ -6,6 +6,7 @@
 @tailwind components;
 @tailwind utilities;
 
+
 /* Optional: set Inter as default */
 @layer base{
   body{
@@ -32,5 +33,42 @@
   .inputStyle {
     @apply bg-white placeholder:text-[#848282] shadow-md p-2.5 py-3 rounded-md w-full text-base;
   }
+}
+
+/* Fix for MUI + Tailwind reset conflict */
+*:where(.MuiButton-root) {
+  all: unset;
+  display: inline-flex;
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes checkBounce {
+  0% {
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out forwards;
+}
+
+.animate-checkBounce {
+  animation: checkBounce 0.6s ease-out forwards;
 }
 
