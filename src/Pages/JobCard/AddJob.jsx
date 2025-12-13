@@ -62,7 +62,7 @@ const AddJob = () => {
   const isEdit = searchParams.get("edit") === "true" || !!id;
 
   // message for success/error
-  const [message, setMessage] = useState("");
+  // const [message, setMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
 
   // Mirror RN state names
@@ -336,7 +336,7 @@ const AddJob = () => {
         }
 
         setShowPopup(true);
-        setMessage("Job updated successfully");
+        // setMessage("Job updated successfully");
       } else {
         // Check duplicate jobCardNo
         const q = query(
@@ -364,7 +364,7 @@ const AddJob = () => {
         });
 
         setShowPopup(true);
-        setMessage("Job created successfully");
+        // setMessage("Job created successfully");
       }
 
       // if (isEdit && id) {
@@ -784,11 +784,11 @@ const AddJob = () => {
             Submit
           </PrimaryBtn>
 
-          {message && (
+          {/* {message && (
             <div className="mt-4 text-green-600 font-bold text-lg">
               {message}
             </div>
-          )}
+          )} */}
         </div>
       </div>
       {showPopup && (
