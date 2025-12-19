@@ -151,7 +151,7 @@ const MaterialList = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 md:space-y-4">
       <h1>Material In</h1>
       <hr />
 
@@ -162,7 +162,7 @@ const MaterialList = () => {
       <div className="flex gap-2 border-b-2 border-gray-200">
         <button
           onClick={() => handleTabChange("raw")}
-          className={`px-6 py-3 font-medium transition-all ${
+          className={`px-6 py-3 font-medium transition-all whitespace-nowrap ${
             activeTab === "raw"
               ? "text-[#3566AD] border-b-4 border-[#3566AD]"
               : "text-gray-500 hover:text-gray-700"
@@ -201,7 +201,7 @@ const MaterialList = () => {
       <div className="flex gap-6 items-end flex-wrap">
         {/* From Date */}
         <div className="flex-1 min-w-[200px]">
-          <label className="block mb-2 font-medium text-sm">From Date</label>
+          <label className="block mb-2 font-medium text-base">From Date</label>
           <input
             type="date"
             value={fromDate}
@@ -221,7 +221,7 @@ const MaterialList = () => {
 
         {/* To Date */}
         <div className="flex-1 min-w-[200px]">
-          <label className="block mb-2 font-medium text-sm">To Date</label>
+          <label className="block mb-2 font-medium text-base">To Date</label>
           <input
             type="date"
             value={toDate}
@@ -242,7 +242,7 @@ const MaterialList = () => {
         {/* Material Category - Only for Created Tab */}
         {activeTab === "created" && (
           <div className="flex-1 min-w-[200px]">
-            <label className="block mb-2 font-medium text-sm">Material Category</label>
+            <label className="block mb-2 font-medium text-base">Material Category</label>
             <select
               value={categoryFilter}
               onChange={(e) => {
@@ -260,7 +260,7 @@ const MaterialList = () => {
 
         {/* Sort Order Toggle */}
         <div className="flex-shrink-0">
-          <label className="block mb-2 font-medium text-sm">Sort by Date</label>
+          <label className="block mb-2 font-medium text-base">Sort by Date</label>
           <button
             onClick={toggleSortOrder}
             className="border border-black/20 rounded-2xl p-3 px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors"
@@ -274,7 +274,7 @@ const MaterialList = () => {
             ) : (
               <>
                 <FaSortAmountUp className="text-lg" />
-                <span className="text-sm">Oldest First</span>
+                <span className="text-base">Oldest First</span>
               </>
             )}
           </button>
@@ -289,7 +289,7 @@ const MaterialList = () => {
       )}
 
       {/* Results Count */}
-      <div className="text-sm text-gray-600">
+      <div className="text-base text-gray-600">
         Showing {currentItems.length} of {filteredMaterials.length} materials
       </div>
 
@@ -298,27 +298,27 @@ const MaterialList = () => {
         <table className="table-auto w-full rounded-xl">
           <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-xl px-3 text-white">
             <tr>
-              <th className="px-3 py-2 border-r-2">Date</th>
-              <th className="px-4 py-2 border-r-2">Paper Code</th>
-              <th className="px-4 py-2 border-r-2">Company</th>
-              <th className="px-4 py-2 border-r-2">Material Type</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Date</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Paper Code</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Company</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Material Type</th>
               {activeTab === "created" && (
                 <>
-                  <th className="px-4 py-2 border-r-2">Material Category</th>
-                  <th className="px-4 py-2 border-r-2">Source Job</th>
-                  <th className="px-4 py-2 border-r-2">Source Stage</th>
+                  <th className="px-4 py-2 border-r-2 whitespace-nowrap">Material Category</th>
+                  <th className="px-4 py-2 border-r-2 whitespace-nowrap">Source Job</th>
+                  <th className="px-4 py-2 border-r-2 whitespace-nowrap">Source Stage</th>
                 </>
               )}
-              <th className="px-4 py-2 border-r-2">Total Running Meter</th>
-              <th className="px-4 py-2 border-r-2">Available Running Meter</th>
-              <th className="px-4 py-2">Action</th>
+              <th className="px-4 py-2 border-r-2 whitespace-pre">Total Running Meter</th>
+              <th className="px-4 py-2 border-r-2 whitespace-pre">Available Running Meter</th>
+              <th className="px-4 py-2 whitespace-pre">Action</th>
             </tr>
           </thead>
 
           <tbody>
             {currentItems.map((item) => (
               <tr className="text-center hover:bg-gray-50" key={item.id}>
-                <td className="border px-4 py-2">
+                <td className="border px-2 md:px-4 py-2">
                   {item.createdAt
                     ? new Date(
                         item.createdAt.seconds
@@ -327,11 +327,11 @@ const MaterialList = () => {
                       ).toLocaleDateString("en-IN")
                     : ""}
                 </td>
-                <td className="border px-4 py-2">{getDisplayValue(item.paperCode)}</td>
-                <td className="border px-4 py-2">
+                <td className="border px-2 md:px-4 py-2">{getDisplayValue(item.paperCode)}</td>
+                <td className="border px-2 md:px-4 py-2">
                   {getDisplayValue(item.paperProductCode)}
                 </td>
-                <td className="border px-4 py-2">{getDisplayValue(item.jobPaper)}</td>
+                <td className="border px-2 md:px-4 py-2">{getDisplayValue(item.jobPaper)}</td>
                 {activeTab === "created" && (
                   <>
                     <td className="border px-4 py-2">
@@ -345,18 +345,18 @@ const MaterialList = () => {
                         {item.materialCategory}
                       </span>
                     </td>
-                    <td className="border px-4 py-2">
+                    <td className="border px-2 md:px-4 py-2">
                       {item.sourceJobCardNo || "-"}
                     </td>
-                    <td className="border px-4 py-2">
+                    <td className="border px-2 md:px-4 py-2">
                       <span className="capitalize">
                         {item.sourceStage || "-"}
                       </span>
                     </td>
                   </>
                 )}
-                <td className="border px-4 py-2">{item.totalRunningMeter}</td>
-                <td className="border px-4 py-2">
+                <td className="border px-2 md:px-4 py-2">{item.totalRunningMeter}</td>
+                <td className="border px-2 md:px-4 py-2">
                   {item.availableRunningMeter}
                 </td>
                 <td className="border py-2 text-center space-x-2">

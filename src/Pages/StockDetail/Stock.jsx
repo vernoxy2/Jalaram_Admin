@@ -394,53 +394,53 @@ const StockReport = () => {
   }
 
   return (
-    <div className="space-y-4 p-6">
+    <div className=" space-y-3 md:space-y-4 ">
       <h1 className="text-3xl font-bold">Stock Report</h1>
       <hr />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-        <div className="bg-blue-100 p-4 rounded-lg shadow">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 mb-6">
+        <div className="bg-blue-100 p-4 pb-8 rounded-lg shadow">
           <div className="text-xs text-gray-600">RAW Purchased</div>
-          <div className="text-2xl font-bold text-blue-600">
+          <h1 className=" font-bold text-blue-600">
             {formatNumber(summaryTotals.purchased)}{" "}
             <span className="text-sm">meter</span>
-          </div>
+          </h1>
         </div>
-        <div className="bg-green-100 p-4 rounded-lg shadow">
-          <div className="text-xs text-gray-600">Total F.G.</div>
-          <div className="text-2xl font-bold text-green-600">
+        <div className="bg-green-100 p-4 pb-8 rounded-lg shadow">
+          <div className="text-xs text-gray-600">Total Used (Final)</div>
+          <h1 className=" font-bold text-green-600">
             {formatNumber(summaryTotals.used)}{" "}
             <span className="text-sm">meter</span>
-          </div>
+          </h1>
         </div>
-        <div className="bg-red-100 p-4 rounded-lg shadow">
+        <div className="bg-red-100 p-4 pb-8 rounded-lg shadow">
           <div className="text-xs text-gray-600">Total Waste</div>
-          <div className="text-2xl font-bold text-red-600">
+          <h1 className=" font-bold text-red-600">
             {formatNumber(summaryTotals.waste)}{" "}
             <span className="text-sm">meter</span>
-          </div>
+          </h1>
         </div>
-        <div className="bg-yellow-100 p-4 rounded-lg shadow">
+        <div className="bg-yellow-100 p-4 pb-8 rounded-lg shadow">
           <div className="text-xs text-gray-600">LO Created</div>
-          <div className="text-2xl font-bold text-yellow-600">
+          <h1 className=" font-bold text-yellow-600">
             {formatNumber(summaryTotals.loCreated)}{" "}
             <span className="text-sm">meter</span>
-          </div>
+          </h1>
         </div>
-        <div className="bg-purple-100 p-4 rounded-lg shadow">
+        <div className="bg-purple-100 p-4 pb-8 rounded-lg shadow">
           <div className="text-xs text-gray-600">WIP Created</div>
-          <div className="text-2xl font-bold text-purple-600">
+          <h1 className="font-bold text-purple-600">
             {formatNumber(summaryTotals.wipCreated)}{" "}
             <span className="text-sm">meter</span>
-          </div>
+          </h1>
         </div>
-        <div className="bg-indigo-100 p-4 rounded-lg shadow">
+        <div className="bg-indigo-100 p-4 pb-8 rounded-lg shadow">
           <div className="text-xs text-gray-600">Total Available</div>
-          <div className="text-2xl font-bold text-indigo-600">
+          <h1 className=" font-bold text-indigo-600">
             {formatNumber(summaryTotals.available)}{" "}
             <span className="text-sm">meter</span>
-          </div>
+          </h1>
         </div>
       </div>
 
@@ -461,7 +461,7 @@ const StockReport = () => {
         </div>
 
         <div>
-          <label className="block mb-2 font-medium text-sm">Category</label>
+          <label className="block mb-2 font-medium">Category</label>
           <select
             value={categoryFilter}
             onChange={(e) => {
@@ -478,7 +478,7 @@ const StockReport = () => {
         </div>
 
         <div>
-          <label className="block mb-2 font-medium text-sm">Paper Code History</label>
+          <label className="block mb-2 font-medium">Paper Code History</label>
           <select
             value={paperCodeFilter}
             onChange={(e) => {
@@ -497,7 +497,7 @@ const StockReport = () => {
         </div>
 
         <div>
-          <label className="block mb-2 font-medium text-sm">From Date</label>
+          <label className="block mb-2 font-medium ">From Date</label>
           <input
             type="date"
             value={fromDate}
@@ -510,7 +510,7 @@ const StockReport = () => {
         </div>
 
         <div>
-          <label className="block mb-2 font-medium text-sm">To Date</label>
+          <label className="block mb-2 font-medium ">To Date</label>
           <input
             type="date"
             value={toDate}
@@ -544,23 +544,23 @@ const StockReport = () => {
       {/* Table */}
       <div className="overflow-x-auto rounded-2xl shadow-lg">
         <table className="table-auto w-full rounded-xl">
-          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-sm text-white">
+          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD]  text-white">
             <tr>
-              <th className="px-3 py-3 border-r-2">Date</th>
-              <th className="px-3 py-3 border-r-2">Paper Code</th>
-              <th className="px-3 py-3 border-r-2">Company</th>
-              <th className="px-3 py-3 border-r-2">Material Type</th>
-              <th className="px-3 py-3 border-r-2">Category</th>
-              <th className="px-3 py-3 border-r-2">Customer</th>
-              <th className="px-3 py-3 border-r-2">Paper Size</th>
-              <th className="px-3 py-3 border-r-2 bg-blue-900">Purchased</th>
-              <th className="px-3 py-3 border-r-2 bg-blue-900">Created</th>
-              <th className="px-3 py-3 border-r-2">F.G.</th>
-              <th className="px-3 py-3 border-r-2">Waste</th>
-              <th className="px-3 py-3 border-r-2">LO</th>
-              <th className="px-3 py-3 border-r-2">WIP</th>
-              <th className="px-3 py-3 border-r-2">Available</th>
-              <th className="px-3 py-3 border-r-2">Source Job</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Date</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Paper Code</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Company</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Material Type</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Category</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Customer</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Paper Size</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-blue-900">Purchased</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-blue-900">Created</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Used</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Waste</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">LO</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">WIP</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Available</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Source Job</th>
               <th className="px-3 py-3">Source Stage</th>
             </tr>
           </thead>
@@ -568,19 +568,19 @@ const StockReport = () => {
           <tbody>
             {currentItems.map((item) => (
               <tr className="text-center hover:bg-gray-50" key={item.id}>
-                <td className="border px-3 py-2 text-sm">
+                <td className="border px-3 py-2">
                   {item.date.toLocaleDateString("en-IN")}
                 </td>
-                <td className="border px-3 py-2 text-sm font-medium">
+                <td className="border px-3 py-2  font-medium">
                   {item.paperCode}
                 </td>
-                <td className="border px-3 py-2 text-sm">
+                <td className="border px-3 py-2 ">
                   {item.paperProductCode}
                 </td>
-                <td className="border px-3 py-2 text-sm">{item.jobPaper}</td>
+                <td className="border px-3 py-2 ">{item.jobPaper}</td>
                 <td className="border px-3 py-2">
                   <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    className={`px-2 py-1 rounded-full  font-semibold ${
                       item.materialCategory === "RAW"
                         ? "bg-blue-200 text-blue-800"
                         : item.materialCategory === "LO"
@@ -591,33 +591,33 @@ const StockReport = () => {
                     {item.materialCategory}
                   </span>
                 </td>
-                <td className="border px-3 py-2 text-sm">{item.customerName}</td>
-                <td className="border px-3 py-2 text-sm">{item.paperSize}</td>
-                <td className="border px-3 py-2 text-sm font-semibold bg-blue-50">
+                <td className="border px-3 py-2 ">{item.customerName}</td>
+                <td className="border px-3 py-2 ">{item.paperSize}</td>
+                <td className="border px-3 py-2  font-semibold bg-blue-50">
                   {item.purchased > 0 ? formatNumber(item.purchased) : "-"}
                 </td>
-                <td className="border px-3 py-2 text-sm font-semibold bg-blue-50">
+                <td className="border px-3 py-2 font-semibold bg-blue-50">
                   {item.created > 0 ? formatNumber(item.created) : "-"}
                 </td>
-                <td className="border px-3 py-2 text-sm text-green-600">
+                <td className="border px-3 py-2 text-green-600">
                   {formatNumber(item.used)}
                 </td>
-                <td className="border px-3 py-2 text-sm text-red-600">
+                <td className="border px-3 py-2 text-red-600">
                   {formatNumber(item.waste)}
                 </td>
-                <td className="border px-3 py-2 text-sm text-yellow-600">
+                <td className="border px-3 py-2 text-yellow-600">
                   {formatNumber(item.lo)}
                 </td>
-                <td className="border px-3 py-2 text-sm text-purple-600">
+                <td className="border px-3 py-2 text-purple-600">
                   {formatNumber(item.wip)}
                 </td>
-                <td className="border px-3 py-2 text-sm font-bold text-indigo-600">
+                <td className="border px-3 py-2 font-bold text-indigo-600">
                   {formatNumber(item.available)}
                 </td>
-                <td className="border px-3 py-2 text-sm">
+                <td className="border px-3 py-2 ">
                   {item.sourceJobCardNo}
                 </td>
-                <td className="border px-3 py-2 text-sm capitalize">
+                <td className="border px-3 py-2 capitalize">
                   {item.sourceStage}
                 </td>
               </tr>
@@ -700,7 +700,7 @@ const StockReport = () => {
       {/* Summary Info */}
       <div className="bg-blue-50 p-4 rounded-lg mt-6">
         <h3 className="font-bold text-lg mb-2">📊 Understanding the Report</h3>
-        <ul className="space-y-1 text-sm">
+        <ul className="space-y-1 ">
           <li>
             <strong>Purchased:</strong> RAW material bought from suppliers
           </li>

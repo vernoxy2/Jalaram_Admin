@@ -15,6 +15,7 @@ import {
 } from 'react-icons/fa';
 import { GiRolledCloth } from 'react-icons/gi';
 import { MdTrendingUp, MdInventory } from 'react-icons/md';
+import PrimaryBtn from '../Components/PrimaryBtn';
 
 // Simple Stat Card Component with light pastel colors
 const StatCard = ({ icon: Icon, title, value, unit, bgColor, iconBg, iconColor, textColor }) => (
@@ -23,9 +24,9 @@ const StatCard = ({ icon: Icon, title, value, unit, bgColor, iconBg, iconColor, 
       <Icon className={`text-2xl ${iconColor}`} />
     </div>
     <p className="text-gray-600 text-sm font-medium mb-1">{title}</p>
-    <p className={`${textColor} text-4xl font-bold`}>
+    <h1 className={`${textColor} font-bold`}>
       {value.toLocaleString()} <span className="text-xl font-semibold text-gray-500">{unit}</span>
-    </p>
+    </h1>
   </div>
 );
 
@@ -170,15 +171,16 @@ const Dashboard = () => {
 
 
   return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-white">
+      <div className=" mx-auto">
         
         {/* Header Section */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-blue-600 mb-2">Dashboard</h1>
+          <h1 className="">Dashboard</h1>
+          <hr className='my-4' />
           <div className="flex items-center justify-between">
             <p className="text-gray-600">Label printing production and inventory overview</p>
-            <button 
+            {/* <button 
               onClick={fetchDashboardData}
               className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium"
             >
@@ -186,12 +188,13 @@ const Dashboard = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               Refresh
-            </button>
+            </button> */}
+            <PrimaryBtn onClick={fetchDashboardData} className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium">Refresh</PrimaryBtn>
           </div>
         </div>
 
         {/* Stock Report Cards - Main Section with Pastel Colors */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 mb-8">
           <StatCard
             icon={FaBox}
             title="RAW Purchased"
@@ -255,10 +258,10 @@ const Dashboard = () => {
         </div>
 
         {/* Job Statistics Section */}
-        <div className="bg-gray-50 rounded-lg p-6 mb-8 border border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800 mb-6">Job Overview</h2>
+        <div className="bg-white rounded-lg p-6 mb-8 border border-gray-200">
+          <h2 className="text-xl font-bold text-primary mb-6">Job Overview</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
             <div className="bg-white rounded-lg p-5 border border-gray-200">
               <div className="bg-gray-100 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
                 <FaClipboardList className="text-2xl text-gray-600" />
@@ -314,7 +317,7 @@ const Dashboard = () => {
           
           {/* Job Distribution */}
           <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-lg font-bold text-gray-800 mb-6">Job Status Distribution</h3>
+            <h3 className="text-lg font-bold text-primary mb-6">Job Status Distribution</h3>
             <div className="space-y-4">
               <ProgressBar
                 label="Printing"
@@ -349,7 +352,7 @@ const Dashboard = () => {
 
           {/* Material Distribution */}
           <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-lg font-bold text-gray-800 mb-6">Material Stock Breakdown</h3>
+            <h3 className="text-lg font-bold text-primary mb-6">Material Stock Breakdown</h3>
             <div className="space-y-4">
               <ProgressBar
                 label="RAW Material"
@@ -392,7 +395,7 @@ const Dashboard = () => {
 
         {/* Material Requests Section */}
         <div className="bg-white rounded-lg p-6 border border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800 mb-6">Material Requests</h2>
+          <h2 className="text-xl font-bold text-primary mb-6">Material Requests</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-yellow-50 rounded-lg p-6 border border-yellow-200">

@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import Right from "../../assets/Right.svg";
-import {FaCaretLeft, FaCaretRight} from "react-icons/fa6"
+import { FaCaretLeft, FaCaretRight } from "react-icons/fa6";
 import { HiOutlineMenuAlt1 } from "react-icons/hi";
-import { IoMenu } from "react-icons/io5";
+import { IoClose, IoMenu } from "react-icons/io5";
 
-const Sidebar = () => {
+const Sidebar = ({ mobileOpen, setMobileOpen }) => {
   const [isOpen, setIsOpen] = useState(true);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  // const [mobileOpen, setMobileOpen] = useState(false);
 
   const toggleSidebar = () => setIsOpen(!isOpen);
   const toggleMobileSidebar = () => setMobileOpen(!mobileOpen);
@@ -45,7 +45,11 @@ const Sidebar = () => {
             onClick={toggleSidebar}
             className=" p-1.5 bg-white rounded-lg hover:bg-white/80 text-black"
           >
-            {isOpen ? <FaCaretLeft className="text-2xl text-primary"/> : <IoMenu className="text-2xl text-primary"/>}
+            {isOpen ? (
+              <FaCaretLeft className="text-2xl text-primary" />
+            ) : (
+              <IoMenu className="text-2xl text-primary" />
+            )}
           </button>
         </div>
         <nav className="flex flex-col mt-10 gap-1 px-2 ml-10 mr-6">
@@ -67,20 +71,16 @@ const Sidebar = () => {
 
       {/* Mobile Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-full bg-[#2F3185] text-white z-50 transition-transform duration-300 md:hidden ${
+        className={`fixed top-0 left-0 h-full bg-gradient-to-b from-[#102F5C] to-[#3566AD] text-white pl-8 z-50 transition-transform duration-300 md:hidden ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
-        } w-64`}
+        } w-80`}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
           <Link to={"/"}>
-            <h1 className="text-xl font-bold">Dashboard</h1>
+            <h1 className="text-white  delay-100">Shree Jalaram </h1>
           </Link>
-          <button
-            onClick={toggleMobileSidebar}
-            className="p-1 px-3 bg-white rounded-md hover:bg-white/80 text-black"
-          >
-            X
-          </button>
+
+          <IoClose onClick={() => setMobileOpen(false)} className="text-2xl"/>
         </div>
         <nav className="flex flex-col mt-4 gap-2 px-2">
           {menuItems.map((item) => (
@@ -101,10 +101,11 @@ const Sidebar = () => {
       </div>
 
       {/* Overlay for Mobile */}
+      {/* Overlay */}
       {mobileOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={toggleMobileSidebar}
+          onClick={() => setMobileOpen(false)}
         ></div>
       )}
     </div>

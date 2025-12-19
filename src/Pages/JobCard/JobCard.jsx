@@ -108,9 +108,9 @@ const JobCard = () => {
   };
 
   return (
-    <div className="space-y-4 max-w-full overflow-hidden">
+    <div className="space-y-2 md:space-y-4 max-w-full ">
       <h1>Job Card</h1>
-      <hr />
+      <hr className="my-2" />
 
       <div className="flex justify-between items-center">
         <Addbtn to="addjob">Add New Job</Addbtn>
@@ -151,7 +151,7 @@ const JobCard = () => {
         label="Search Job"
         variant="standard"
         fullWidth
-        className="rounded-3xl"
+        className="rounded-3xl "
         value={search}
         onChange={(e) => {
           setSearch(e.target.value);
@@ -231,30 +231,30 @@ const JobCard = () => {
       <h2>All Jobs</h2>
 
       {/* TABLE */}
-      <div className="overflow-x-auto rounded-2xl shadow-lg w-fit">
-        <table className="table-auto w-full rounded-xl">
-          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] xl:text-xl px-3 text-white">
+      <div className=" rounded-2xl shadow-lg  overflow-auto  lg:w-fit">
+        <table className="table-auto  rounded-xl">
+          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-base xl:text-xl px-3 text-white">
             <tr className="">
-              <th className="px-4 py-2 border-r-2">Job Card No</th>
-              <th className="px-4 py-2 border-r-2">Job Name</th>
-              <th className="px-4 py-2 border-r-2">Customer Name</th>
-              <th className="px-4 py-2 border-r-2">Date</th>
-              <th className="px-4 py-2 border-r-2">Status</th>
-              <th className="px-4 py-2 ">Action</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Job Card No</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Job Name</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Customer Name</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Date</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Status</th>
+              <th className="px-2 md:px-4 py-2 whitespace-nowrap">Action</th>
             </tr>
           </thead>
 
-          <tbody className="text-sm xl:text-base">
+          <tbody className="text-base xl:text-base">
             {currentItems.map((job) => (
               <tr
                 key={job.id}
                 onClick={() => navigate(`detail/${job.id}`)}
                 className="cursor-pointer hover:bg-gray-100 text-center"
               >
-                <td className="border px-4 py-2">{job.jobCardNo}</td>
-                <td className="border px-4 py-2">{job.jobName}</td>
-                <td className="border px-4 py-2">{job.customerName}</td>
-                <td className="border px-4 py-2">
+                <td className="border px-2 md:px-4 py-2">{job.jobCardNo}</td>
+                <td className="border px-2 md:px-4 py-2">{job.jobName}</td>
+                <td className="border px-2 md:px-4 py-2">{job.customerName}</td>
+                <td className="border px-2 md:px-4 py-2">
                   {job.jobDate
                     ? new Date(job.jobDate.seconds * 1000)
                         .toISOString()
@@ -262,7 +262,7 @@ const JobCard = () => {
                     : ""}
                 </td>
                 <td
-                  className={`border px-4 py-2 ${
+                  className={`border px-2 md:px-4 py-2 ${
                     job.jobStatus === "Completed" ||
                     job.jobStatus === "completed"
                       ? "text-green-600"
@@ -274,7 +274,7 @@ const JobCard = () => {
 
                 {/* PREVENT ROW CLICK HERE */}
                 <td
-                  className="border px-4 py-2"
+                  className="border px-2 md:px-4 py-2"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {job.jobStatus?.toLowerCase() !== "completed" && (

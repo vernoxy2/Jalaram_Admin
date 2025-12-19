@@ -80,7 +80,7 @@ const MaterialIssueRequestList = () => {
   };
 
   return (
-    <div className="space-y-5  max-w-full overflow-hidden">
+    <div className="space-y-3 md:space-y-4  max-w-full overflow-hidden">
       <h1>Material Request List</h1>
 
       <hr />
@@ -155,17 +155,17 @@ const MaterialIssueRequestList = () => {
       <h2 className="font-bold text-lg">All Jobs</h2>
 
       {/* TABLE */}
-      <div className="overflow-x-auto rounded-2xl shadow-lg w-fit">
+      <div className="overflow-x-auto rounded-2xl shadow-lg md:w-fit">
         <table className="table-auto rounded-xl">
-          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD]  text-xl px-3 text-white">
+          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD]  md:text-xl px-3 text-white">
             <tr>
-              <th className="px-4 py-2 border-r-2">Job Card No</th>
-              <th className="px-4 py-2 border-r-2">Job Name</th>
-              <th className="px-4 py-2 border-r-2">Request Date</th>
-              <th className="px-4 py-2 border-r-2">Required Material</th>
-              <th className="px-4 py-2 border-r-2">Issued Material</th>
-              <th className="px-4 py-2 border-r-2">Request By</th>
-              <th className="px-4 py-2">Action</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Job Card No</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Job Name</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Request Date</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Required Material</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Issued Material</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Request By</th>
+              <th className="px-2 md:px-4 py-2">Action</th>
             </tr>
           </thead>
 
