@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { auth, db } from "../firebase"; // Import your firebase config
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import LoginImg from "../assets/LoginImg.webp";
 import Right from "../assets/Right.svg";
 import Logow from "../assets/LogoW.svg";
@@ -11,11 +14,17 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({ email: "", password: "" });
+  const [loading, setLoading] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
-    if (isLoggedIn) navigate("/");
+    const userRole = localStorage.getItem("userRole");
+    
+    // Only redirect if logged in AND role is Admin
+    if (isLoggedIn && userRole === "Admin") {
+      navigate("/");
+    }
   }, [navigate]);
 
   // Validation function
@@ -43,12 +52,84 @@ const Login = () => {
     return valid;
   };
 
-  // Handle login
-  const handleLogin = (e) => {
+  // Handle login with Firebase
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (validate()) {
-      localStorage.setItem("isLoggedIn", "true"); // Set login flag
-      navigate("/"); // Redirect to dashboard
+    
+    if (!validate()) return;
+
+    if (loading) return; // Prevent double submission
+
+    setLoading(true);
+    setErrors({ email: "", password: "" });
+
+    try {
+      // Ensure any existing user is fully signed out before new login
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        console.log(
+          "⚠️ Existing user found, signing out before new login:",
+          currentUser.uid
+        );
+        await signOut(auth);
+      }
+
+      // Sign in with Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+      const uid = userCredential.user.uid;
+
+      console.log("✅ Logged in successfully, UID:", uid);
+
+      // Fetch user role from Firestore
+      const userDocRef = doc(db, "users", uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        setErrors({
+          email: "",
+          password: "User profile not found. Please contact administrator.",
+        });
+        await signOut(auth); // Sign out if no user doc
+        setLoading(false);
+        return;
+      }
+
+      const userData = userDoc.data();
+      const role = userData.role;
+
+      console.log("🔑 User role:", role);
+
+      // ✅ Only allow Admin role for web portal
+      if (role === "Admin") {
+        // Store authentication state
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("userRole", role);
+        localStorage.setItem("userId", uid);
+        localStorage.setItem("userEmail", email.trim());
+
+        // Redirect to dashboard
+        navigate("/");
+      } else {
+        // Access denied for non-admin users
+        setErrors({
+          email: "",
+          password: `Access Denied. This portal is only for Admin users. Your role: ${role}`,
+        });
+        await signOut(auth); // Sign out non-admin users
+      }
+    } catch (error) {
+      console.error("❌ Login Error:", error);
+      
+      let errorMessage = "Login failed. Please enter valid credentials.";
+         
+      
+      setErrors({ email: "", password: errorMessage });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -72,7 +153,7 @@ const Login = () => {
             </p>
           </div>
           <h1 className="text-[#3668B1] lg:text-white font-medium text-3xl leading-snug pt-8">
-            One Click to <br /> Your Dashboard.
+            Admin Portal <br /> Login
           </h1>
 
           <form className="space-y-5 w-full" onSubmit={handleLogin}>
@@ -82,10 +163,13 @@ const Login = () => {
                 placeholder="Email ID"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-transparent ring-2 lg:text-white lg:ring-white lg:placeholder:text-white shadow-md p-3 rounded-md w-full text-lg font-medium focus:outline-none"
+                disabled={loading}
+                className="bg-transparent ring-2 lg:text-white lg:ring-white lg:placeholder:text-white shadow-md p-3 rounded-md w-full text-lg font-medium focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               />
               {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                <p className="text-red-500 lg:text-red-200 text-sm mt-1 font-semibold">
+                  {errors.email}
+                </p>
               )}
             </div>
 
@@ -95,18 +179,35 @@ const Login = () => {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-transparent ring-2 lg:text-white lg:ring-white lg:placeholder:text-white shadow-md p-3 rounded-md w-full text-lg font-medium focus:outline-none"
+                disabled={loading}
+                className="bg-transparent ring-2 lg:text-white lg:ring-white lg:placeholder:text-white shadow-md p-3 rounded-md w-full text-lg font-medium focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               />
               {errors.password && (
-                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                <p className="text-red-500 lg:text-red-200 text-sm mt-1 font-semibold">
+                  {errors.password}
+                </p>
               )}
             </div>
 
             <button
               type="submit"
-              className="bg-[#3668B1] lg:bg-white text-white lg:text-[#3668B1] w-fit p-3 px-5 mr-auto rounded-md text-xl font-bold hover:bg-gray-100 transition"
+              disabled={loading}
+              className="bg-[#3668B1] lg:bg-white text-white lg:text-[#3668B1] w-fit p-3 px-5 mr-auto rounded-md text-xl font-bold hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              Login
+              {loading ? (
+                <>
+                  <svg
+                    className="animate-spin h-5 w-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >                   
+                  </svg>
+                  Logging in...
+                </>
+              ) : (
+                "Login"
+              )}
             </button>
           </form>
         </div>

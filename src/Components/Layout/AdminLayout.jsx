@@ -19,7 +19,7 @@ const AdminLayout = () => {
 
         <main className="px-6 py-6 md:py-10 pr-6 w-full container">
           <Outlet /> {/* renders nested route components */}
-          <p className="text-center py-5 md:py-2 text-gray-300 text-sm">Develop by Vernoxy </p>
+          <p className="text-center py-5 md:py-2 text-gray-300 text-sm">Developed by Vernoxy </p>
         </main>
       </div>
     </div>
