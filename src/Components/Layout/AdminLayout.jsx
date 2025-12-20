@@ -1,7 +1,8 @@
 import React from "react";
-import Sidebar from "./SideBar"; // make sure the filename matches exactly
+import Sidebar from "./SideBar";
 import Header from "./Header";
 import { Outlet } from "react-router-dom";
+import Footer from "./Footer";
 
 const AdminLayout = () => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -17,9 +18,15 @@ const AdminLayout = () => {
         {/* Sidebar */}
         <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
 
-        <main className="px-6 py-6 md:py-10 pr-6 w-full container">
-          <Outlet /> {/* renders nested route components */}
-          <p className="text-center py-5 md:py-2 text-gray-300 text-sm">Develop by Vernoxy </p>
+        {/* Main Content */}
+        <main className="flex flex-col px-6 py-6 md:pt-10 w-full">
+          {/* Page Content */}
+          <div className="flex-1">
+            <Outlet />
+          </div>
+
+          {/* Footer always at bottom */}
+          <Footer className="mt-auto" />
         </main>
       </div>
     </div>
