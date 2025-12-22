@@ -77,6 +77,17 @@ const MaterialIssueRequestList = () => {
     if (page > 0 && page <= totalPages) setCurrentPage(page);
   };
 
+  // ✅ Helper function to determine if "Issue Now" button should be shown
+  const shouldShowIssueButton = (item) => {
+    const requiredMaterial = Number(item.requiredMaterial || 0);
+    const issuedMeter = Number(item.issuedMeter || 0);
+    const isIssued = item.isIssued === true;
+
+    // Show button if material is NOT fully issued
+    // Hide button only if: requiredMaterial <= issuedMeter AND isIssued = true
+    return !(requiredMaterial <= issuedMeter && isIssued);
+  };
+
   return (
     <div className="space-y-3 md:space-y-4  max-w-full overflow-hidden">
       <h1>Material Request List</h1>
@@ -157,54 +168,73 @@ const MaterialIssueRequestList = () => {
         <table className="table-auto rounded-xl">
           <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD]  md:text-xl px-3 text-white">
             <tr>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Job Card No</th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Job Name</th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Request Date</th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Required Material</th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Issued Material</th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Request By</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Job Card No
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Job Name
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Customer Name
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Request Date
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Required Material
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Issued Material
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Request By
+              </th>
               <th className="px-2 md:px-4 py-2">Action</th>
             </tr>
           </thead>
 
           <tbody>
-            {currentItems.map((item, index) => (
-              <tr key={index} className="border text-center">
-                <td className="border px-4 py-2">{item.jobCardNo}</td>
-                <td className="border px-4 py-2">{item.jobName}</td>
-                <td className="border px-4 py-2">
-                  {item.createdAt
-                    ? new Date(item.createdAt.seconds * 1000)
-                        .toISOString()
-                        .split("T")[0]
-                    : ""}
-                </td>
-                {/* <td className="border px-4 py-2">{item.requiredMaterial}</td> */}
-                <td className="border px-4 py-2">
-                  {item.requiredMaterial
-                    ? parseFloat(item.requiredMaterial).toString()
-                    : ""}
-                </td>
-                <td className="border px-4 py-2">
-                  {item.issuedMeter ? item.issuedMeter : 0}
-                </td>
-                <td className="border px-4 py-2">{item.createdBy}</td>
+            {currentItems.map((item, index) => {
+              const issuedMeter = Number(item.issuedMeter || 0);
 
-                <td className="border px-4 py-2">
-                  {!item.isIssued ? (
-                    <button
-                      className="bg-[#D2D2D2]/40 border hover:border-primary font-semibold text-primary px-3 py-1 rounded-lg"
-                      // onClick={() => navigate(`${item.id}`)}
-                      onClick={() => navigate(`/issue_material/${item.id}`)}
-                    >
-                      Issue Now
-                    </button>
-                  ) : (
-                    <></>
-                  )}
-                </td>
-              </tr>
-            ))}
+              return (
+                <tr key={index} className="border text-center">
+                  <td className="border px-4 py-2">{item.jobCardNo}</td>
+                  <td className="border px-4 py-2">{item.jobName}</td>
+                  <td className="border px-4 py-2">
+                    {item.customerName ?? "-"}
+                  </td>
+                  <td className="border px-4 py-2">
+                    {item.createdAt
+                      ? new Date(item.createdAt.seconds * 1000)
+                          .toISOString()
+                          .split("T")[0]
+                      : ""}
+                  </td>
+                  <td className="border px-4 py-2">
+                    {item.requiredMaterial
+                      ? parseFloat(item.requiredMaterial).toString()
+                      : ""}
+                  </td>
+                  <td className="border px-4 py-2">{issuedMeter}</td>
+                  <td className="border px-4 py-2">{item.createdBy}</td>
+
+                  {/* Action Column */}
+                  <td className="border px-4 py-2">
+                    {shouldShowIssueButton(item) ? (
+                      <button
+                        className="bg-[#D2D2D2]/40 border hover:border-primary font-semibold text-primary px-3 py-1 rounded-lg"
+                        onClick={() => navigate(`/issue_material/${item.id}`)}
+                      >
+                        Issue Now
+                      </button>
+                    ) : (
+                      <span className="text-gray-400 text-sm">-</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

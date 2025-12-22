@@ -42,7 +42,14 @@ import SuccessPopup from "../../Components/SuccessPopup";
 
 const db = getFirestore(getApp()); // assumes firebase app already initialized
 
-const PrimaryInput = ({ type, value, onChange, name, placeholder }) => {
+const PrimaryInput = ({
+  type,
+  value,
+  onChange,
+  name,
+  placeholder,
+  readOnly,
+}) => {
   return (
     <input
       type={type}
@@ -51,6 +58,7 @@ const PrimaryInput = ({ type, value, onChange, name, placeholder }) => {
       placeholder={placeholder}
       onChange={onChange}
       className="inputStyle"
+      readOnly={readOnly}
     />
   );
 };
@@ -74,6 +82,7 @@ const AddJob = () => {
   // const [jobSize, setJobSize] = useState("");
   const [jobLength, setJobLength] = useState("");
   const [jobWidth, setJobWidth] = useState("");
+  const [paperSize, setPaperSize] = useState(""); // ✅ NEW FIELD
   const [totalPaperRequired, setTotalPaperRequired] = useState("");
   const [jobQty, setJobQty] = useState("");
   const [jobPaper, setJobPaper] = useState("");
@@ -105,6 +114,7 @@ const AddJob = () => {
         // setJobSize(data.jobSize || "");
         setJobLength(data.jobLength || "");
         setJobWidth(data.jobWidth || "");
+        setPaperSize(data.paperSize || ""); // ✅ NEW FIELD
         setTotalPaperRequired(data.totalPaperRequired || "");
         setJobQty(data.jobQty || "");
         setAcrossGap(data.acrossGap || "");
@@ -164,6 +174,7 @@ const AddJob = () => {
       console.error("Error generating job card:", err);
     }
   }, []);
+
   useEffect(() => {
     console.log(isEdit);
     console.log(id);
@@ -183,66 +194,21 @@ const AddJob = () => {
     run();
   }, [isEdit, id]);
 
-  // ✅ ADD THESE HANDLERS (after your state declarations, around line 180)
-
-  // const handleJobLengthChange = (e) => {
-  //   const newLength = e.target.value;
-  //   setJobLength(newLength);
-
-  //   // Auto-calculate if all values are present
-  //   if (newLength && jobWidth && jobQty) {
-  //     const length = parseFloat(newLength);
-  //     const width = parseFloat(jobWidth);
-  //     const qty = parseInt(jobQty, 10);
-
-  //     if (!isNaN(length) && !isNaN(width) && !isNaN(qty)) {
-  //       const total = length * width * qty;
-  //       setTotalPaperRequired(total.toFixed(2));
-  //     }
-  //   }
-  // };
-
-  // const handleJobWidthChange = (e) => {
-  //   const newWidth = e.target.value;
-  //   setJobWidth(newWidth);
-
-  //   // Auto-calculate if all values are present
-  //   if (jobLength && newWidth && jobQty) {
-  //     const length = parseFloat(jobLength);
-  //     const width = parseFloat(newWidth);
-  //     const qty = parseInt(jobQty, 10);
-
-  //     if (!isNaN(length) && !isNaN(width) && !isNaN(qty)) {
-  //       const total = length * width * qty;
-  //       setTotalPaperRequired(total.toFixed(2));
-  //     }
-  //   }
-  // };
-
-  // const handleJobQtyChange = (e) => {
-  //   const newQty = e.target.value;
-  //   setJobQty(newQty);
-
-  //   // Auto-calculate if all values are present
-  //   if (jobLength && jobWidth && newQty) {
-  //     const length = parseFloat(jobLength);
-  //     const width = parseFloat(jobWidth);
-  //     const qty = parseInt(newQty, 10);
-
-  //     if (!isNaN(length) && !isNaN(width) && !isNaN(qty)) {
-  //       const total = length * width * qty;
-  //       setTotalPaperRequired(total.toFixed(2));
-  //     }
-  //   }
-  // };
-
-  const calculateTotalPaper = useCallback((qty, size, ups) => {
+  // ✅ UPDATED FORMULA: totalPaperRequired = ((labelSize + aroundGap)*totalLabels)/(1000*across)
+  const calculateTotalPaper = useCallback((qty, size, ups, gap) => {
     const totalLabels = parseFloat(qty);
     const labelSize = parseFloat(size);
     const across = parseFloat(ups);
+    const aroundGapValue = parseFloat(gap);
 
-    if (!isNaN(totalLabels) && !isNaN(labelSize) && !isNaN(across)) {
-      const total = (totalLabels * labelSize * across) / 1000;
+    if (
+      !isNaN(totalLabels) &&
+      !isNaN(labelSize) &&
+      !isNaN(across) &&
+      !isNaN(aroundGapValue)
+    ) {
+      const total =
+        ((labelSize + aroundGapValue) * totalLabels) / (1000 * across);
       setTotalPaperRequired(total.toFixed(2));
     }
   }, []);
@@ -250,19 +216,26 @@ const AddJob = () => {
   const handleJobQtyChange = (e) => {
     const value = e.target.value;
     setJobQty(value);
-    calculateTotalPaper(value, calculationSize, upsAcrossValue);
+    calculateTotalPaper(value, calculationSize, upsAcrossValue, aroundGap);
   };
 
   const handleCalculationSizeChange = (e) => {
     const value = e.target.value;
     setCalculationSize(value);
-    calculateTotalPaper(jobQty, value, upsAcrossValue);
+    calculateTotalPaper(jobQty, value, upsAcrossValue, aroundGap);
   };
 
   const handleUpsAcrossChange = (e) => {
     const value = e.target.value;
     setUpsAcrossValue(value);
-    calculateTotalPaper(jobQty, calculationSize, value);
+    calculateTotalPaper(jobQty, calculationSize, value, aroundGap);
+  };
+
+  // ✅ NEW HANDLER for aroundGap
+  const handleAroundGapChange = (e) => {
+    const value = e.target.value;
+    setAroundGap(value);
+    calculateTotalPaper(jobQty, calculationSize, upsAcrossValue, value);
   };
 
   const findOption = (list, value) => {
@@ -300,11 +273,12 @@ const AddJob = () => {
         jobCardNo,
         jobName,
         // jobSize,
-        jobLength, // ✅ Add
-        jobWidth, // ✅ Add
+        jobLength,
+        jobWidth,
+        paperSize, // ✅ NEW FIELD
         jobQty,
         calculationSize,
-        totalPaperRequired, // ✅ Add
+        totalPaperRequired,
         jobType: selectedLabelType,
         assignedTo: assignedUserUID,
 
@@ -321,8 +295,8 @@ const AddJob = () => {
         accept,
         acrossGap,
         aroundGap,
-        materialAllotStatus: "Pending", // ✅ Add
-        materialAllocations: [], // ✅ Add
+        materialAllotStatus: "Pending",
+        materialAllocations: [],
         updatedAt: serverTimestamp(),
       };
 
@@ -332,6 +306,7 @@ const AddJob = () => {
         jobName,
         jobLength,
         jobWidth,
+        paperSize, // ✅ NEW FIELD
         jobPaper: findOption(materialTypeList, jobPaper),
         jobQty,
         calculationSize,
@@ -341,6 +316,7 @@ const AddJob = () => {
         requestType: "Initial",
         createdAt: serverTimestamp(),
         createdBy: "Admin",
+        customerName,
       };
 
       if (isEdit && id) {
@@ -369,7 +345,6 @@ const AddJob = () => {
         }
 
         setShowPopup(true);
-        // setMessage("Job updated successfully");
       } else {
         // Check duplicate jobCardNo
         const q = query(
@@ -397,7 +372,6 @@ const AddJob = () => {
         });
 
         setShowPopup(true);
-        // setMessage("Job created successfully");
       }
 
       // navigate back a bit after a short feedback
@@ -435,9 +409,11 @@ const AddJob = () => {
 
     if (!jobLength) newErrors.jobLength = "Job Length is required";
     if (!jobWidth) newErrors.jobWidth = "Job Width is required";
+    if (!paperSize) newErrors.paperSize = "Paper Size is required"; // ✅ NEW VALIDATION
     if (!jobQty) newErrors.jobQty = "Job Quantity is required";
     if (!calculationSize) newErrors.calculationSize = "Label size is required";
     if (!upsAcrossValue) newErrors.upsAcrossValue = "Across Ups is required";
+    if (!aroundGap) newErrors.aroundGap = "Around Gap is required"; // ✅ NEW VALIDATION
     if (!totalPaperRequired)
       newErrors.totalPaperRequired = "Total Paper Required is required";
 
@@ -463,18 +439,7 @@ const AddJob = () => {
             className="grid md:grid-cols-2 gap-8 w-full "
           >
             {/* PO No */}
-            {/* <PrimaryInput
-            type={"text"}
-            name="poNo"
-            placeholder="PO No"
-            value={poNo}
-            onChange={(e) => setPoNo(e.target.value)}
-          /> */}
             <div>
-              {/* <label className="font-medium">
-              PO No <span className="text-red-500">*</span>
-            </label> */}
-
               <PrimaryInput
                 type="text"
                 name="poNo"
@@ -482,10 +447,9 @@ const AddJob = () => {
                 value={poNo}
                 onChange={(e) => {
                   setPoNo(e.target.value);
-                  setErrors((prev) => ({ ...prev, poNo: "" })); // 🔥 remove error on type
+                  setErrors((prev) => ({ ...prev, poNo: "" }));
                 }}
               />
-
               {errors.poNo && (
                 <p className="text-red-600 text-sm">{errors.poNo}</p>
               )}
@@ -512,7 +476,6 @@ const AddJob = () => {
                   setErrors((prev) => ({ ...prev, jobName: "" }));
                 }}
               />
-
               {errors.jobName && (
                 <p className="text-red-600 text-sm">{errors.jobName}</p>
               )}
@@ -534,6 +497,7 @@ const AddJob = () => {
                 <p className="text-red-600 text-sm">{errors.jobCardNo}</p>
               )}
             </div>
+
             {/* Customer Name */}
             <div>
               <PrimaryInput
@@ -550,14 +514,7 @@ const AddJob = () => {
                 <p className="text-red-600 text-sm">{errors.customerName}</p>
               )}
             </div>
-            {/* Job Original Size */}
-            {/* <PrimaryInput
-            type={"text"}
-            name="jobSize"
-            placeholder="Job Original Size"
-            value={jobSize}
-            onChange={(e) => setJobSize(e.target.value)}
-          /> */}
+
             {/* Job Length */}
             <div>
               <PrimaryInput
@@ -566,17 +523,17 @@ const AddJob = () => {
                 placeholder="Job Length"
                 value={jobLength}
                 onChange={(e) => {
-                   setJobLength(e.target.value);
-                  // handleJobLengthChange(e);
-                  // setErrors((prev) => ({ ...prev, jobLength: "" }));
+                  setJobLength(e.target.value);
+                  setErrors((prev) => ({ ...prev, jobLength: "" }));
                 }}
               />
               {errors.jobLength && (
                 <p className="text-red-600 text-sm">{errors.jobLength}</p>
               )}
             </div>
+
+            {/* Job Width */}
             <div>
-              {/* Job Width */}
               <PrimaryInput
                 type={"number"}
                 name="jobWidth"
@@ -584,14 +541,31 @@ const AddJob = () => {
                 value={jobWidth}
                 onChange={(e) => {
                   setJobWidth(e.target.value);
-                  // handleJobWidthChange(e);
-                  // setErrors((prev) => ({ ...prev, jobWidth: "" }));
+                  setErrors((prev) => ({ ...prev, jobWidth: "" }));
                 }}
               />
               {errors.jobWidth && (
                 <p className="text-red-600 text-sm">{errors.jobWidth}</p>
               )}
             </div>
+
+            {/* ✅ Paper Size - NEW FIELD */}
+            <div>
+              <PrimaryInput
+                type={"number"}
+                name="paperSize"
+                placeholder="Paper Size *"
+                value={paperSize}
+                onChange={(e) => {
+                  setPaperSize(e.target.value);
+                  setErrors((prev) => ({ ...prev, paperSize: "" }));
+                }}
+              />
+              {errors.paperSize && (
+                <p className="text-red-600 text-sm">{errors.paperSize}</p>
+              )}
+            </div>
+
             {/* Job Qty */}
             <div>
               <PrimaryInput
@@ -604,14 +578,12 @@ const AddJob = () => {
                   setErrors((prev) => ({ ...prev, jobQty: "" }));
                 }}
               />
-
               {errors.jobQty && (
                 <p className="text-red-600 text-sm">{errors.jobQty}</p>
               )}
             </div>
 
             {/* Job Paper / Film Material */}
-            {/* <label className="font-medium">Job Paper / File Material:</label> */}
             <select
               name="jobPaper"
               value={jobPaper}
@@ -629,7 +601,6 @@ const AddJob = () => {
             </select>
 
             {/* Printing Plate Size */}
-            {/* <label className="font-medium">Printing Plate Size:</label> */}
             <select
               name="plateSize"
               value={plateSize}
@@ -644,6 +615,7 @@ const AddJob = () => {
               ))}
             </select>
 
+            {/* Label Size (for calculation) */}
             <div>
               <PrimaryInput
                 type="number"
@@ -661,46 +633,28 @@ const AddJob = () => {
             </div>
 
             {/* Across Ups */}
-            {/* <label className="font-medium">Across Ups:</label> */}
-            <select
-              name="upsAcross"
-              value={upsAcrossValue}
-              onChange={(e) => {
-                handleUpsAcrossChange(e);
-                setErrors((prev) => ({ ...prev, upsAcrossValue: "" }));
-              }}
-              className="inputStyle"
-            >
-              <option value="">Select Across Ups *</option>
-              {upsAcross.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-
-            {errors.upsAcrossValue && (
-              <p className="text-red-600 text-sm">{errors.upsAcrossValue}</p>
-            )}
-
-            {/* Total Paper Required - can be manually edited */}
             <div>
-              <PrimaryInput
-                type={"text"}
-                name="totalPaperRequired"
-                placeholder="Total Paper Required"
-                value={totalPaperRequired}
+              <select
+                name="upsAcross"
+                value={upsAcrossValue}
                 onChange={(e) => {
-                  setTotalPaperRequired(e.target.value);
-                  setErrors((prev) => ({ ...prev, totalPaperRequired: "" }));
+                  handleUpsAcrossChange(e);
+                  setErrors((prev) => ({ ...prev, upsAcrossValue: "" }));
                 }}
-              />
-              {errors.totalPaperRequired && (
-                <p className="text-red-600 text-sm">
-                  {errors.totalPaperRequired}
-                </p>
+                className="inputStyle"
+              >
+                <option value="">Select Across Ups *</option>
+                {upsAcross.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+              {errors.upsAcrossValue && (
+                <p className="text-red-600 text-sm">{errors.upsAcrossValue}</p>
               )}
             </div>
+
             {/* Across Gap */}
             <PrimaryInput
               type={"number"}
@@ -709,10 +663,8 @@ const AddJob = () => {
               value={acrossGap}
               onChange={(e) => setAcrossGap(e.target.value)}
             />
-            {/* <label className="font-medium">Across Gap:</label> */}
 
             {/* Around */}
-            {/* <label className="font-medium">Around:</label> */}
             <select
               name="around"
               value={aroundValue}
@@ -727,18 +679,44 @@ const AddJob = () => {
               ))}
             </select>
 
-            {/* Around Gap */}
-            <PrimaryInput
-              type={"number"}
-              name="aroundGap"
-              placeholder="Around Gap"
-              value={aroundGap}
-              onChange={(e) => setAroundGap(e.target.value)}
-            />
-            {/* <label className="font-medium">Around Gap:</label> */}
+            {/* ✅ Around Gap - REQUIRED FIELD, placed BEFORE totalPaperRequired */}
+            <div>
+              <PrimaryInput
+                type={"number"}
+                name="aroundGap"
+                placeholder="Around Gap *"
+                value={aroundGap}
+                onChange={(e) => {
+                  handleAroundGapChange(e);
+                  setErrors((prev) => ({ ...prev, aroundGap: "" }));
+                }}
+              />
+              {errors.aroundGap && (
+                <p className="text-red-600 text-sm">{errors.aroundGap}</p>
+              )}
+            </div>
+
+            {/* Total Paper Required - can be manually edited */}
+            <div>
+              <PrimaryInput
+                type={"text"}
+                name="totalPaperRequired"
+                placeholder="Total Paper Required"
+                value={totalPaperRequired}
+                onChange={(e) => {
+                  setTotalPaperRequired(e.target.value);
+                  setErrors((prev) => ({ ...prev, totalPaperRequired: "" }));
+                }}
+                readOnly={true}
+              />
+              {errors.totalPaperRequired && (
+                <p className="text-red-600 text-sm">
+                  {errors.totalPaperRequired}
+                </p>
+              )}
+            </div>
 
             {/* Teeth Size */}
-            {/* <label className="font-medium">Teeth Size:</label> */}
             <select
               name="teethSize"
               value={teethSizeValue}
@@ -754,7 +732,6 @@ const AddJob = () => {
             </select>
 
             {/* Blocks */}
-            {/* <label className="font-medium">Blocks:</label> */}
             <select
               name="blocks"
               value={blocksValue}
@@ -770,7 +747,6 @@ const AddJob = () => {
             </select>
 
             {/* Winding Direction */}
-            {/* <label className="font-medium">Winding Direction:</label> */}
             <select
               name="windingDirection"
               value={windingDirectionValue}
@@ -786,7 +762,6 @@ const AddJob = () => {
             </select>
 
             {/* Label Type */}
-            {/* <label className="font-medium">Label Type:</label> */}
             <div>
               <select
                 name="labelType"
@@ -811,20 +786,16 @@ const AddJob = () => {
               )}
             </div>
           </form>
+
           <PrimaryBtn
             onClick={handleSubmit}
             className=" w-full mx-auto md:col-span-2"
           >
             Submit
           </PrimaryBtn>
-
-          {/* {message && (
-            <div className="mt-4 text-green-600 font-bold text-lg">
-              {message}
-            </div>
-          )} */}
         </div>
       </div>
+
       {showPopup && (
         <SuccessPopup
           message={

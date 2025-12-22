@@ -14,6 +14,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { FaCaretRight } from "react-icons/fa6";
+import { FiSearch } from "react-icons/fi";
 import { materialTypeList, paperProductCodeData } from "../../utils/constant";
 import BackButton from "../../Components/BackButton";
 import SuccessPopup from "../../Components/SuccessPopup";
@@ -33,6 +34,7 @@ const MaterialIssueForm = () => {
     requestedMaterial: "",
     requestDate: "",
     alloteDate: "",
+    customerName: "",
   });
 
   const [jobPaper, setJobPaper] = useState("");
@@ -42,6 +44,11 @@ const MaterialIssueForm = () => {
   const [LO, setLO] = useState([]);
   const [WIP, setWIP] = useState([]);
   const [RAW, setRAW] = useState([]);
+
+  // Search states for each table
+  const [searchLO, setSearchLO] = useState("");
+  const [searchWIP, setSearchWIP] = useState("");
+  const [searchRAW, setSearchRAW] = useState("");
 
   const { id } = useParams();
 
@@ -54,7 +61,6 @@ const MaterialIssueForm = () => {
         setLoading(false);
         return;
       }
-
       setLoading(true);
       setError(null);
       try {
@@ -74,7 +80,9 @@ const MaterialIssueForm = () => {
             data.requiredMaterial || data.requestedMaterial || 0
           );
           const alreadyIssued = Number(data.issuedMeter || 0);
-          const remaining = totalRequired - alreadyIssued;
+          // const remaining = totalRequired - alreadyIssued;
+          const remaining =
+            Math.round((totalRequired - alreadyIssued) * 100) / 100;
 
           setFormData({
             jobCardNo: data.jobCardNo || "",
@@ -83,6 +91,7 @@ const MaterialIssueForm = () => {
             requestedMaterial: remaining > 0 ? remaining : 0,
             requestDate: requestDate,
             alloteDate: new Date().toISOString().split("T")[0],
+            customerName: data.customerName || "",
           });
 
           setJobPaper(data.jobPaper?.value || data.jobPaper || "");
@@ -165,14 +174,14 @@ const MaterialIssueForm = () => {
             availableMeter: doc.data().availableRunningMeter || 0,
             totalRolls: doc.data().roll || 0,
             runningMeter: doc.data().runningMeter || 0,
-            rack: doc.data().rack || "N/A",
+            // rack: doc.data().rack || "N/A",
             createdAt: doc.data().createdAt,
           }))
           .sort(
             (a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt)
           );
 
-        // ✅ LO Materials Query
+        // ✅ LO Materials Query (No customer filtering - can be used for any customer)
         const loQuery = query(
           collection(db, "materials"),
           ...baseConditions,
@@ -188,7 +197,7 @@ const MaterialIssueForm = () => {
               ...data,
               paperCode: data.paperCode,
               availableMeter: data.availableRunningMeter || 0,
-              rack: data.rack || "N/A",
+              // rack: data.rack || "N/A",
               sourceJobCardNo: data.sourceJobCardNo,
               customerName: ordersMap[data.sourceJobCardNo] || "-",
               createdAt: data.createdAt,
@@ -198,7 +207,7 @@ const MaterialIssueForm = () => {
             (a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt)
           );
 
-        // ✅ WIP Materials Query
+        // ✅ WIP Materials Query (Filter by customer name)
         const wipQuery = query(
           collection(db, "materials"),
           ...baseConditions,
@@ -214,12 +223,20 @@ const MaterialIssueForm = () => {
               ...data,
               paperCode: data.paperCode,
               availableMeter: data.availableRunningMeter || 0,
-              rack: data.rack || "N/A",
+              // rack: data.rack || "N/A",
               stage: data.sourceStage || "Unknown",
               sourceJobCardNo: data.sourceJobCardNo,
               customerName: ordersMap[data.sourceJobCardNo] || "-",
               createdAt: data.createdAt,
             };
+          })
+          // ✅ Filter WIP by customer name - only show materials from same customer
+          .filter((wip) => {
+            const wipCustomerName = wip.customerName.toLowerCase().trim();
+            const currentCustomerName = (formData.customerName || "")
+              .toLowerCase()
+              .trim();
+            return wipCustomerName === currentCustomerName;
           })
           .sort(
             (a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt)
@@ -236,7 +253,7 @@ const MaterialIssueForm = () => {
     };
 
     fetchMaterials();
-  }, [paperProductCode, jobPaper, formData.paperSize]);
+  }, [paperProductCode, jobPaper, formData.paperSize, formData.customerName]);
 
   /* -------------------------------------------------------------
      3) HELPER FUNCTION TO FORMAT DATE (DISPLAY ONLY)
@@ -257,7 +274,60 @@ const MaterialIssueForm = () => {
   };
 
   /* -------------------------------------------------------------
-     4) HANDLE SELECT / ISSUE METER & ROLLS CHANGE  
+     4) FILTER FUNCTIONS FOR SEARCH
+  --------------------------------------------------------------- */
+  const filterMaterials = (materials, searchTerm, type) => {
+    if (!searchTerm) return materials;
+
+    const search = searchTerm.toLowerCase().trim();
+
+    return materials.filter((item) => {
+      const paperCode = (item.paperCode || "").toLowerCase();
+      const availableMeter = String(item.availableMeter || "");
+      // const rack = (item.rack || "").toLowerCase();
+      const sourceJobCardNo = (item.sourceJobCardNo || "").toLowerCase();
+      const customerName = (item.customerName || "").toLowerCase();
+      const createdDate = formatDate(item.createdAt).toLowerCase();
+
+      // Common fields for all types
+      let matches =
+        paperCode.includes(search) ||
+        availableMeter.includes(search) ||
+        // rack.includes(search) ||
+        createdDate.includes(search);
+
+      // Type-specific fields
+      if (type === "RAW") {
+        const totalRolls = String(item.totalRolls || "");
+        const runningMeter = String(item.runningMeter || "");
+        matches =
+          matches ||
+          totalRolls.includes(search) ||
+          runningMeter.includes(search);
+      }
+
+      if (type === "LO" || type === "WIP") {
+        matches =
+          matches ||
+          sourceJobCardNo.includes(search) ||
+          customerName.includes(search);
+      }
+
+      if (type === "WIP") {
+        const stage = (item.stage || "").toLowerCase();
+        matches = matches || stage.includes(search);
+      }
+
+      return matches;
+    });
+  };
+
+  const filteredLO = filterMaterials(LO, searchLO, "LO");
+  const filteredWIP = filterMaterials(WIP, searchWIP, "WIP");
+  const filteredRAW = filterMaterials(RAW, searchRAW, "RAW");
+
+  /* -------------------------------------------------------------
+     5) HANDLE SELECT / ISSUE METER & ROLLS CHANGE  
   --------------------------------------------------------------- */
   const handleSelect = (materialType, roll) => {
     const exists = selectedRolls.find((item) => item.id === roll.id);
@@ -369,7 +439,7 @@ const MaterialIssueForm = () => {
   }, 0);
 
   /* -------------------------------------------------------------
-     5) ISSUE MATERIAL & SUBTRACT STOCK IN FIRESTORE + UPDATE ORDER
+     6) ISSUE MATERIAL & SUBTRACT STOCK IN FIRESTORE + UPDATE ORDER
   --------------------------------------------------------------- */
   const handleIssue = async () => {
     if (selectedRolls.length === 0) {
@@ -579,7 +649,7 @@ const MaterialIssueForm = () => {
   };
 
   /* -------------------------------------------------------------
-     6) INPUT HANDLER
+     7) INPUT HANDLER
   --------------------------------------------------------------- */
   const handleChange = (e) => {
     setFormData({
@@ -646,6 +716,12 @@ const MaterialIssueForm = () => {
               name="jobName"
               value={formData.jobName}
               onChange={handleChange}
+              readOnly
+            />
+            <Input
+              label="Customer Name"
+              name="customerName"
+              value={formData.customerName}
               readOnly
             />
             <Input
@@ -718,54 +794,86 @@ const MaterialIssueForm = () => {
             </div>
           ) : (
             <div className="space-y-5">
-              <h2 className="flex items-center ">
-                <span>
-                  <FaCaretRight className="text-2xl" />
-                </span>
-                Leftover (LO)
-              </h2>
-              <MaterialTable
-                title="Leftover (LO)"
-                data={LO}
-                type="LO"
-                onSelect={handleSelect}
-                selected={selectedRolls}
-                onMeterChange={handleMeterChange}
-                onRollsChange={handleRollsChange}
-                formatDate={formatDate}
-              />
-              <h2 className="flex items-center ">
-                <span>
-                  <FaCaretRight className="text-2xl" />
-                </span>
-                Work In Process (WIP)
-              </h2>
-              <MaterialTable
-                title="Work In Process (WIP)"
-                data={WIP}
-                type="WIP"
-                onSelect={handleSelect}
-                selected={selectedRolls}
-                onMeterChange={handleMeterChange}
-                onRollsChange={handleRollsChange}
-                formatDate={formatDate}
-              />
-              <h2 className="flex items-center ">
-                <span>
-                  <FaCaretRight className="text-2xl" />
-                </span>
-                Raw Material
-              </h2>
-              <MaterialTable
-                title="Raw Material"
-                data={RAW}
-                type="RAW"
-                onSelect={handleSelect}
-                selected={selectedRolls}
-                onMeterChange={handleMeterChange}
-                onRollsChange={handleRollsChange}
-                formatDate={formatDate}
-              />
+              {/* LO Section */}
+              <div className="space-y-3">
+                <h2 className="flex items-center ">
+                  <span>
+                    <FaCaretRight className="text-2xl" />
+                  </span>
+                  Leftover (LO)
+                </h2>
+
+                <SearchBar
+                  value={searchLO}
+                  onChange={setSearchLO}
+                  placeholder="Search LO materials (Paper Code, Available Meter, Source Job, Customer, Date...)"
+                />
+
+                <MaterialTable
+                  title="Leftover (LO)"
+                  data={filteredLO}
+                  type="LO"
+                  onSelect={handleSelect}
+                  selected={selectedRolls}
+                  onMeterChange={handleMeterChange}
+                  onRollsChange={handleRollsChange}
+                  formatDate={formatDate}
+                />
+              </div>
+
+              {/* WIP Section */}
+              <div className="space-y-3">
+                <h2 className="flex items-center ">
+                  <span>
+                    <FaCaretRight className="text-2xl" />
+                  </span>
+                  Work In Process (WIP)
+                </h2>
+
+                <SearchBar
+                  value={searchWIP}
+                  onChange={setSearchWIP}
+                  placeholder="Search WIP materials (Paper Code, Stage, Available Meter, Source Job, Customer, Date...)"
+                />
+
+                <MaterialTable
+                  title="Work In Process (WIP)"
+                  data={filteredWIP}
+                  type="WIP"
+                  onSelect={handleSelect}
+                  selected={selectedRolls}
+                  onMeterChange={handleMeterChange}
+                  onRollsChange={handleRollsChange}
+                  formatDate={formatDate}
+                />
+              </div>
+
+              {/* RAW Section */}
+              <div className="space-y-3">
+                <h2 className="flex items-center ">
+                  <span>
+                    <FaCaretRight className="text-2xl" />
+                  </span>
+                  Raw Material
+                </h2>
+
+                <SearchBar
+                  value={searchRAW}
+                  onChange={setSearchRAW}
+                  placeholder="Search RAW materials (Paper Code, Rolls, Running Meter, Available Meter, Date...)"
+                />
+
+                <MaterialTable
+                  title="Raw Material"
+                  data={filteredRAW}
+                  type="RAW"
+                  onSelect={handleSelect}
+                  selected={selectedRolls}
+                  onMeterChange={handleMeterChange}
+                  onRollsChange={handleRollsChange}
+                  formatDate={formatDate}
+                />
+              </div>
             </div>
           )}
 
@@ -859,6 +967,19 @@ const Input = ({
   </div>
 );
 
+const SearchBar = ({ value, onChange, placeholder }) => (
+  <div className="w-full relative">
+    <input
+      type="text"
+      placeholder={placeholder}
+      className="border border-gray-300 rounded-lg w-full p-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+    <FiSearch className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
+  </div>
+);
+
 const MaterialTable = ({
   title,
   data,
@@ -891,7 +1012,7 @@ const MaterialTable = ({
               </>
             )}
 
-            <th className="p-2 border">Rack</th>
+            {/* <th className="p-2 border">Rack</th> */}
             {isRawMaterial && <th className="p-2 border">Rolls to Issue</th>}
             <th className="p-2 border">
               Issue Meter
@@ -960,13 +1081,11 @@ const MaterialTable = ({
                       <td className="p-2 border">
                         {roll.sourceJobCardNo || "N/A"}
                       </td>
-                      <td className="p-2 border">
-                        {roll.customerName || "-"}
-                      </td>
+                      <td className="p-2 border">{roll.customerName || "-"}</td>
                     </>
                   )}
 
-                  <td className="p-2 border">{roll.rack}</td>
+                  {/* <td className="p-2 border">{roll.rack}</td> */}
 
                   {/* ✅ RAW ONLY: Rolls to Issue Input */}
                   {isRawMaterial && (
