@@ -619,6 +619,9 @@ const MaterialIssueForm = () => {
           materialUpdates[`materialCategory${suffix}`] =
             roll.materialCategory || "RAW";
 
+          // ✅ ADD THIS: Store allocation timestamp
+          materialUpdates[`allocatedAt${suffix}`] = new Date();
+
           currentOrderData[`paperProductCode${suffix}`] =
             materialUpdates[`paperProductCode${suffix}`];
         });

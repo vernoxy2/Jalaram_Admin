@@ -187,8 +187,6 @@ const Dashboard = () => {
       // ✅ Calculate stock using SAME logic as StockReport but only for selected month
       let totalUsedCalc = 0;
       let totalWasteCalc = 0;
-      let totalLoCalc = 0;
-      let totalWipCalc = 0;
 
       filteredMaterials.forEach((material) => {
         // Match transactions by paperCode - filter by material's paper code
@@ -222,8 +220,6 @@ const Dashboard = () => {
 
         let materialUsed = 0;
         let materialWaste = 0;
-        let materialLO = 0;
-        let materialWIP = 0;
 
         if (material.materialCategory === "RAW") {
           // For RAW: Find the LAST stage where material was used
@@ -250,18 +246,10 @@ const Dashboard = () => {
             );
           }
 
-          // Sum waste, LO, WIP across ALL stages
+          // Sum waste across ALL stages
           materialWaste = materialTransactions
             .filter((t) => t.transactionType === "consumption")
             .reduce((sum, t) => sum + (parseFloat(t.wasteQty) || 0), 0);
-
-          materialLO = materialTransactions
-            .filter((t) => t.transactionType === "consumption")
-            .reduce((sum, t) => sum + (parseFloat(t.loQty) || 0), 0);
-
-          materialWIP = materialTransactions
-            .filter((t) => t.transactionType === "consumption")
-            .reduce((sum, t) => sum + (parseFloat(t.wipQty) || 0), 0);
         } else if (
           material.materialCategory === "LO" ||
           material.materialCategory === "WIP"
@@ -277,11 +265,13 @@ const Dashboard = () => {
               (sum, t) => sum + (parseFloat(t.wasteQty) || 0),
               0
             );
-            materialLO = consumptionTransactions.reduce(
+            
+            const materialLO = consumptionTransactions.reduce(
               (sum, t) => sum + (parseFloat(t.loQty) || 0),
               0
             );
-            materialWIP = consumptionTransactions.reduce(
+            
+            const materialWIP = consumptionTransactions.reduce(
               (sum, t) => sum + (parseFloat(t.wipQty) || 0),
               0
             );
@@ -293,8 +283,6 @@ const Dashboard = () => {
 
         totalUsedCalc += materialUsed;
         totalWasteCalc += materialWaste;
-        totalLoCalc += materialLO;
-        totalWipCalc += materialWIP;
       });
 
       // Calculate totals from filtered materials
@@ -356,7 +344,7 @@ const Dashboard = () => {
       );
 
       setPendingRequests(
-        filteredRequests.filter((r) => r.isIssued === false).length
+        filteredRequests.filter((r) => r.isIssued !== true).length
       );
       setApprovedRequests(
         filteredRequests.filter((r) => r.isIssued === true).length
