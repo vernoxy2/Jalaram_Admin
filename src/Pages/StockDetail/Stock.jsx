@@ -9,7 +9,7 @@ const StockReport = () => {
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState(["RAW"]); // Default to RAW only
   const [paperCodeFilter, setPaperCodeFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -26,6 +26,18 @@ const StockReport = () => {
       return val.value || val.label || "-";
     }
     return val;
+  };
+
+  // Handle category checkbox toggle
+  const handleCategoryToggle = (category) => {
+    setCategoryFilter(prev => {
+      if (prev.includes(category)) {
+        return prev.filter(c => c !== category);
+      } else {
+        return [...prev, category];
+      }
+    });
+    setCurrentPage(1);
   };
 
   useEffect(() => {
@@ -57,8 +69,14 @@ const StockReport = () => {
         const stockReport = materials.map((material) => {
           // Match transactions by paperCode for ALL material categories
           const materialTransactions = transactions.filter((t) => {
-            // For RAW materials: match against paperProductNo (comma-separated paper codes)
+            // For RAW materials: match against paperProductNo (comma-separated) OR direct paperCode
             if (material.materialCategory === "RAW") {
+              // Check direct paperCode match (for issue transactions)
+              if (t.paperCode === material.paperCode) {
+                return true;
+              }
+              
+              // Check paperProductNo (comma-separated, for consumption transactions)
               const transactionPaperCodes = t.paperProductNo
                 ? t.paperProductNo.split(",").map((code) => code.trim())
                 : [];
@@ -79,6 +97,16 @@ const StockReport = () => {
 
             return false;
           });
+
+          // ✅ Calculate Total Issue from issue transactions
+          const issueTransactions = materialTransactions.filter(
+            (t) => t.transactionType === "issue"
+          );
+          
+          const totalIssue = issueTransactions.reduce(
+            (sum, t) => sum + (parseFloat(t.usedQty) || 0),
+            0
+          );
 
           let totalUsed = 0;
           let totalWaste = 0;
@@ -184,17 +212,14 @@ const StockReport = () => {
           const customerName = matchingOrder?.customerName || "-";
 
           // Find which RAW paper codes were used to create this LO/WIP
-          // by looking at transactions that created this material
           let usedRawPaperCodes = [];
           if (material.materialCategory === "LO" || material.materialCategory === "WIP") {
-            // Find transactions where this material was created
             const creationTransactions = transactions.filter((t) => {
               if (!t.newPaperCode) return false;
               const newCodes = t.newPaperCode.split(",").map(c => c.trim());
               return newCodes.includes(material.paperCode);
             });
 
-            // Get the RAW paper codes that were used in those transactions
             creationTransactions.forEach((t) => {
               if (t.paperProductNo) {
                 const codes = t.paperProductNo.split(",").map(c => c.trim());
@@ -216,6 +241,7 @@ const StockReport = () => {
             jobPaper: safeValue(material.jobPaper) || "-",
             purchased: isPurchased ? material.totalRunningMeter || 0 : 0,
             created: isCreated ? material.totalRunningMeter || 0 : 0,
+            totalIssue: totalIssue, // ✅ New field
             used: totalUsed,
             waste: totalWaste,
             lo: totalLO,
@@ -257,18 +283,18 @@ const StockReport = () => {
     if (!matchesSearch) return false;
     if (fromDate && formattedDate < fromDate) return false;
     if (toDate && formattedDate > toDate) return false;
-    if (categoryFilter !== "ALL" && item.materialCategory !== categoryFilter) {
+    
+    // ✅ Updated: Check if item's category is in the selected categories array
+    if (categoryFilter.length > 0 && !categoryFilter.includes(item.materialCategory)) {
       return false;
     }
 
-    // Paper Code History Filter: Show RAW material and all LO/WIP created from it
+    // Paper Code History Filter
     if (paperCodeFilter) {
-      // Show the RAW material itself
       if (item.paperCode === paperCodeFilter && item.materialCategory === "RAW") {
         return true;
       }
       
-      // Show LO/WIP materials that were created using this RAW paper
       if (
         (item.materialCategory === "LO" || item.materialCategory === "WIP") &&
         item.usedRawPaperCodes.includes(paperCodeFilter)
@@ -299,6 +325,7 @@ const StockReport = () => {
     (acc, item) => {
       acc.purchased += item.purchased;
       acc.created += item.created;
+      acc.totalIssue += item.totalIssue; // ✅ New field
       acc.used += item.used;
       acc.waste += item.waste;
 
@@ -317,6 +344,7 @@ const StockReport = () => {
     {
       purchased: 0,
       created: 0,
+      totalIssue: 0, // ✅ New field
       used: 0,
       waste: 0,
       loCreated: 0,
@@ -345,6 +373,7 @@ const StockReport = () => {
       "Paper Size",
       "Purchased",
       "Created",
+      "Total Issue",
       "Used",
       "Waste",
       "LO",
@@ -364,6 +393,7 @@ const StockReport = () => {
       item.paperSize,
       formatNumber(item.purchased),
       formatNumber(item.created),
+      formatNumber(item.totalIssue),
       formatNumber(item.used),
       formatNumber(item.waste),
       formatNumber(item.lo),
@@ -404,6 +434,13 @@ const StockReport = () => {
           <div className="text-xs text-gray-600">RAW Purchased</div>
           <h1 className=" font-bold text-blue-600">
             {formatNumber(summaryTotals.purchased)}{" "}
+            <span className="text-sm">meter</span>
+          </h1>
+        </div>
+        <div className="bg-orange-100 p-4 pb-8 rounded-lg shadow">
+          <div className="text-xs text-gray-600">Total Issue</div>
+          <h1 className=" font-bold text-orange-600">
+            {formatNumber(summaryTotals.totalIssue)}{" "}
             <span className="text-sm">meter</span>
           </h1>
         </div>
@@ -460,21 +497,38 @@ const StockReport = () => {
           <FiSearch className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
         </div>
 
+        {/* ✅ Category Checkboxes */}
         <div>
           <label className="block mb-2 font-medium">Category</label>
-          <select
-            value={categoryFilter}
-            onChange={(e) => {
-              setCategoryFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="border border-black/20 rounded-2xl p-3"
-          >
-            <option value="ALL">All</option>
-            <option value="RAW">RAW</option>
-            <option value="LO">LO</option>
-            <option value="WIP">WIP</option>
-          </select>
+          <div className="flex gap-4 items-center border border-black/20 rounded-2xl p-3 bg-white">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={categoryFilter.includes("RAW")}
+                onChange={() => handleCategoryToggle("RAW")}
+                className="w-4 h-4"
+              />
+              <span className="text-sm font-medium">RAW</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={categoryFilter.includes("LO")}
+                onChange={() => handleCategoryToggle("LO")}
+                className="w-4 h-4"
+              />
+              <span className="text-sm font-medium">LO</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={categoryFilter.includes("WIP")}
+                onChange={() => handleCategoryToggle("WIP")}
+                className="w-4 h-4"
+              />
+              <span className="text-sm font-medium">WIP</span>
+            </label>
+          </div>
         </div>
 
         <div>
@@ -555,6 +609,7 @@ const StockReport = () => {
               <th className="px-3 py-3 border-r-2 whitespace-nowrap">Paper Size</th>
               <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-blue-900">Purchased</th>
               <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-blue-900">Created</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-orange-900">Total Issue</th>
               <th className="px-3 py-3 border-r-2 whitespace-nowrap">Used</th>
               <th className="px-3 py-3 border-r-2 whitespace-nowrap">Waste</th>
               <th className="px-3 py-3 border-r-2 whitespace-nowrap">LO</th>
@@ -599,6 +654,9 @@ const StockReport = () => {
                 <td className="border px-3 py-2 font-semibold bg-blue-50">
                   {item.created > 0 ? formatNumber(item.created) : "-"}
                 </td>
+                <td className="border px-3 py-2 font-semibold bg-orange-50 text-orange-600">
+                  {formatNumber(item.totalIssue)}
+                </td>
                 <td className="border px-3 py-2 text-green-600">
                   {formatNumber(item.used)}
                 </td>
@@ -625,7 +683,7 @@ const StockReport = () => {
 
             {currentItems.length === 0 && (
               <tr>
-                <td colSpan="16" className="text-center p-4 text-gray-500">
+                <td colSpan="17" className="text-center p-4 text-gray-500">
                   No stock data found
                 </td>
               </tr>
@@ -642,6 +700,9 @@ const StockReport = () => {
               </td>
               <td className="border px-3 py-3 text-blue-600 bg-blue-50">
                 {formatNumber(summaryTotals.created)}
+              </td>
+              <td className="border px-3 py-3 text-orange-600 bg-orange-50">
+                {formatNumber(summaryTotals.totalIssue)}
               </td>
               <td className="border px-3 py-3 text-green-600">
                 {formatNumber(summaryTotals.used)}
@@ -709,6 +770,9 @@ const StockReport = () => {
             production
           </li>
           <li>
+            <strong>Total Issue:</strong> Total material issued from stock for production jobs
+          </li>
+          <li>
             <strong>Used:</strong> For RAW - final output from last stage. For
             LO/WIP - calculated as: Created - (Waste + LO + WIP)
           </li>
@@ -722,11 +786,6 @@ const StockReport = () => {
           <li>
             <strong>Paper Code History Filter:</strong> Select a RAW paper code to see its complete journey - the original RAW material purchase and all LO/WIP materials that were created from it during production.
           </li>
-          {/* <li className="bg-yellow-50 p-2 rounded mt-2">
-            <strong>💡 Formula for LO/WIP:</strong> Used = Created - Waste - LO
-            - WIP. This prevents double-counting as material flows through
-            stages.
-          </li> */}
         </ul>
       </div>
     </div>

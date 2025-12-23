@@ -10,6 +10,7 @@ import {
   FaHourglassHalf,
   FaBox,
   FaExclamationTriangle,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { GiRolledCloth } from "react-icons/gi";
 import { MdInventory } from "react-icons/md";
@@ -65,6 +66,15 @@ const ProgressBar = ({ label, value, total, color, lightColor }) => {
 };
 
 const Dashboard = () => {
+  // Selected Month State (default to current month)
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}`;
+  });
+
   // Job Statistics
   const [totalJobs, setTotalJobs] = useState(0);
   const [printingJobs, setPrintingJobs] = useState(0);
@@ -77,6 +87,7 @@ const Dashboard = () => {
   const [rawPurchased, setRawPurchased] = useState(0);
   const [loCreated, setLoCreated] = useState(0);
   const [wipCreated, setWipCreated] = useState(0);
+  const [totalIssue, setTotalIssue] = useState(0);
   const [totalUsed, setTotalUsed] = useState(0);
   const [totalWaste, setTotalWaste] = useState(0);
   const [totalAvailable, setTotalAvailable] = useState(0);
@@ -86,6 +97,26 @@ const Dashboard = () => {
   const [approvedRequests, setApprovedRequests] = useState(0);
 
   const [loading, setLoading] = useState(true);
+
+  // Helper function to check if a date is in the selected month
+  const isInSelectedMonth = (timestamp) => {
+    if (!timestamp) return false;
+
+    let date;
+    if (timestamp.seconds) {
+      date = new Date(timestamp.seconds * 1000);
+    } else if (timestamp instanceof Date) {
+      date = timestamp;
+    } else {
+      date = new Date(timestamp);
+    }
+
+    const [year, month] = selectedMonth.split("-");
+    return (
+      date.getFullYear() === parseInt(year) &&
+      date.getMonth() === parseInt(month) - 1
+    );
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -98,12 +129,27 @@ const Dashboard = () => {
         ...doc.data(),
       }));
 
-      setTotalJobs(jobs.length);
-      setPrintingJobs(jobs.filter((j) => j.jobStatus === "Printing").length);
-      setPunchingJobs(jobs.filter((j) => j.jobStatus === "Punching").length);
-      setSlittingJobs(jobs.filter((j) => j.jobStatus === "Slitting").length);
-      setCompletedJobs(jobs.filter((j) => j.jobStatus === "Completed").length);
-      setPendingJobs(jobs.filter((j) => j.jobStatus !== "Completed").length);
+      // Filter jobs by selected month
+      const filteredJobs = jobs.filter((job) =>
+        isInSelectedMonth(job.createdAt || job.jobDate)
+      );
+
+      setTotalJobs(filteredJobs.length);
+      setPrintingJobs(
+        filteredJobs.filter((j) => j.jobStatus === "Printing").length
+      );
+      setPunchingJobs(
+        filteredJobs.filter((j) => j.jobStatus === "Punching").length
+      );
+      setSlittingJobs(
+        filteredJobs.filter((j) => j.jobStatus === "Slitting").length
+      );
+      setCompletedJobs(
+        filteredJobs.filter((j) => j.jobStatus === "Completed").length
+      );
+      setPendingJobs(
+        filteredJobs.filter((j) => j.jobStatus !== "Completed").length
+      );
 
       // Fetch Materials Data
       const materialsSnapshot = await getDocs(collection(db, "materials"));
@@ -111,6 +157,11 @@ const Dashboard = () => {
         id: doc.id,
         ...doc.data(),
       }));
+
+      // Filter materials by selected month
+      const filteredMaterials = materials.filter((material) =>
+        isInSelectedMonth(material.createdAt)
+      );
 
       // Fetch Material Transactions
       const transactionsSnapshot = await getDocs(
@@ -121,16 +172,34 @@ const Dashboard = () => {
         ...doc.data(),
       }));
 
-      // ✅ Calculate stock using SAME logic as StockReport
+      // Filter transactions by selected month
+      const filteredTransactions = transactions.filter((transaction) =>
+        isInSelectedMonth(transaction.transactionDate)
+      );
+
+      // ✅ Calculate Total Issue from filtered transactions
+      const totalIssueCalc = filteredTransactions
+        .filter((t) => t.transactionType === "issue")
+        .reduce((sum, t) => sum + (parseFloat(t.usedQty) || 0), 0);
+
+      setTotalIssue(totalIssueCalc);
+
+      // ✅ Calculate stock using SAME logic as StockReport but only for selected month
       let totalUsedCalc = 0;
       let totalWasteCalc = 0;
       let totalLoCalc = 0;
       let totalWipCalc = 0;
 
-      materials.forEach((material) => {
-        // Match transactions by paperCode
-        const materialTransactions = transactions.filter((t) => {
+      filteredMaterials.forEach((material) => {
+        // Match transactions by paperCode - filter by material's paper code
+        const materialTransactions = filteredTransactions.filter((t) => {
           if (material.materialCategory === "RAW") {
+            // Check direct paperCode match (for issue transactions)
+            if (t.paperCode === material.paperCode) {
+              return true;
+            }
+
+            // Check paperProductNo (comma-separated)
             const transactionPaperCodes = t.paperProductNo
               ? t.paperProductNo.split(",").map((code) => code.trim())
               : [];
@@ -228,12 +297,14 @@ const Dashboard = () => {
         totalWipCalc += materialWIP;
       });
 
-      // Calculate totals
-      const rawMaterials = materials.filter(
+      // Calculate totals from filtered materials
+      const rawMaterials = filteredMaterials.filter(
         (m) => m.materialCategory === "RAW"
       );
-      const loMaterials = materials.filter((m) => m.materialCategory === "LO");
-      const wipMaterials = materials.filter(
+      const loMaterials = filteredMaterials.filter(
+        (m) => m.materialCategory === "LO"
+      );
+      const wipMaterials = filteredMaterials.filter(
         (m) => m.materialCategory === "WIP"
       );
 
@@ -279,8 +350,17 @@ const Dashboard = () => {
         ...doc.data(),
       }));
 
-      setPendingRequests(requests.filter((r) => r.isIssued === false).length);
-      setApprovedRequests(requests.filter((r) => r.isIssued === true).length);
+      // Filter requests by selected month
+      const filteredRequests = requests.filter((request) =>
+        isInSelectedMonth(request.createdAt)
+      );
+
+      setPendingRequests(
+        filteredRequests.filter((r) => r.isIssued === false).length
+      );
+      setApprovedRequests(
+        filteredRequests.filter((r) => r.isIssued === true).length
+      );
 
       setLoading(false);
     } catch (error) {
@@ -290,25 +370,30 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    let isMounted = true;
+    fetchDashboardData();
+  }, [selectedMonth]); // Re-fetch when month changes
 
-    const loadData = async () => {
-      if (isMounted) {
-        await fetchDashboardData();
-      }
-    };
+  // Generate month options for the last 12 months
+  const generateMonthOptions = () => {
+    const options = [];
+    const now = new Date();
 
-    loadData();
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const value = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}`;
+      const label = date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+      });
+      options.push({ value, label });
+    }
 
-    const interval = setInterval(() => {
-      loadData();
-    }, 15000);
+    return options;
+  };
 
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+  const monthOptions = generateMonthOptions();
 
   if (loading) {
     return (
@@ -331,17 +416,38 @@ const Dashboard = () => {
     <div className="min-h-screen bg-white">
       <div className=" mx-auto">
         <div className="mb-8">
-          <h1 className="">Dashboard</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="">Dashboard</h1>
+
+            {/* Month Selector */}
+            <div className="flex items-center gap-3">
+              <FaCalendarAlt className="text-blue-600 text-xl" />
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {monthOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <hr className="my-4" />
+
           <div className="flex items-center justify-between">
             <p className="text-gray-600">
-              Label printing production and inventory overview
+              Label printing production and inventory overview for{" "}
+              {monthOptions.find((m) => m.value === selectedMonth)?.label}
             </p>
           </div>
         </div>
 
         {/* Stock Report Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
           <StatCard
             icon={FaBox}
             title="RAW Purchased"
@@ -351,6 +457,16 @@ const Dashboard = () => {
             iconBg="bg-blue-100"
             iconColor="text-blue-600"
             textColor="text-blue-600"
+          />
+          <StatCard
+            icon={MdInventory}
+            title="Total Issue"
+            value={totalIssue}
+            unit="meter"
+            bgColor="bg-orange-50"
+            iconBg="bg-orange-100"
+            iconColor="text-orange-600"
+            textColor="text-orange-600"
           />
           <StatCard
             icon={GiRolledCloth}
@@ -524,6 +640,15 @@ const Dashboard = () => {
                 }
                 color="bg-blue-500"
                 lightColor="bg-blue-100"
+              />
+              <ProgressBar
+                label="Total Issue"
+                value={totalIssue}
+                total={
+                  rawPurchased + loCreated + wipCreated + totalUsed + totalWaste
+                }
+                color="bg-orange-500"
+                lightColor="bg-orange-100"
               />
               <ProgressBar
                 label="LO Material"

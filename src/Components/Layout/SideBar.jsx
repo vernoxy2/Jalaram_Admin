@@ -10,7 +10,7 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
   // const [mobileOpen, setMobileOpen] = useState(false);
 
   const toggleSidebar = () => setIsOpen(!isOpen);
-  const toggleMobileSidebar = () => setMobileOpen(!mobileOpen);
+  // const toggleMobileSidebar = () => setMobileOpen(!mobileOpen);
 
   const location = useLocation();
   const currentPath = "/" + location.pathname.split("/")[1];

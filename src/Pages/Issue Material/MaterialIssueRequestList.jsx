@@ -1,22 +1,52 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { FiSearch } from "react-icons/fi";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase";
 
 const MaterialIssueRequestList = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [data, setData] = useState([]);
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [dateError, setDateError] = useState("");
+  const [highlightId, setHighlightId] = useState(location.state?.highlightId || null);
+  const rowRefs = useRef({});
 
   const itemsPerPage = 10;
 
-  // 🔥 FETCH MATERIAL REQUEST DATA
+  // Handle highlight from notification
+  useEffect(() => {
+    if (highlightId) {
+      // Scroll to the highlighted row after a short delay
+      const scrollTimer = setTimeout(() => {
+        const element = rowRefs.current[highlightId];
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 300);
+
+      // Remove highlight after 3 seconds
+      const highlightTimer = setTimeout(() => {
+        setHighlightId(null);
+      }, 3000);
+
+      // Clear the location state
+      window.history.replaceState({}, document.title);
+
+      // Cleanup timers
+      return () => {
+        clearTimeout(scrollTimer);
+        clearTimeout(highlightTimer);
+      };
+    }
+  }, [highlightId]);
+
+  // FETCH MATERIAL REQUEST DATA
   useEffect(() => {
     const fetchData = async () => {
       const snapshot = await getDocs(collection(db, "materialRequest"));
@@ -66,7 +96,7 @@ const MaterialIssueRequestList = () => {
     return true;
   });
 
-  // 🔢 PAGINATION
+  // PAGINATION
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
@@ -77,7 +107,7 @@ const MaterialIssueRequestList = () => {
     if (page > 0 && page <= totalPages) setCurrentPage(page);
   };
 
-  // ✅ Helper function to determine if "Issue Now" button should be shown
+  // Helper function to determine if "Issue Now" button should be shown
   const shouldShowIssueButton = (item) => {
     const requiredMaterial = Number(item.requiredMaterial || 0);
     const issuedMeter = Number(item.issuedMeter || 0);
@@ -89,7 +119,7 @@ const MaterialIssueRequestList = () => {
   };
 
   return (
-    <div className="space-y-3 md:space-y-4  max-w-full overflow-hidden">
+    <div className="space-y-3 md:space-y-4 max-w-full overflow-hidden">
       <h1>Material Request List</h1>
 
       <hr />
@@ -166,7 +196,7 @@ const MaterialIssueRequestList = () => {
       {/* TABLE */}
       <div className="overflow-x-auto rounded-2xl shadow-lg md:w-fit">
         <table className="table-auto rounded-xl">
-          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD]  md:text-xl px-3 text-white">
+          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] md:text-xl px-3 text-white">
             <tr>
               <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
                 Job Card No
@@ -196,9 +226,18 @@ const MaterialIssueRequestList = () => {
           <tbody>
             {currentItems.map((item, index) => {
               const issuedMeter = Number(item.issuedMeter || 0);
+              const isHighlighted = highlightId === item.id;
 
               return (
-                <tr key={index} className="border text-center">
+                <tr
+                  key={index}
+                  ref={(el) => (rowRefs.current[item.id] = el)}
+                  className={`border text-center transition-all duration-300 ${
+                    isHighlighted
+                      ? "bg-yellow-100 shadow-lg scale-[1.02]"
+                      : "hover:bg-gray-50"
+                  }`}
+                >
                   <td className="border px-4 py-2">{item.jobCardNo}</td>
                   <td className="border px-4 py-2">{item.jobName}</td>
                   <td className="border px-4 py-2">
