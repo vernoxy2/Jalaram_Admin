@@ -23,10 +23,9 @@ const AdminLayout = () => {
           {/* Page Content */}
           <div className="flex-1">
             <Outlet />
+          <Footer className="mt-auto" />
           </div>
 
-          {/* Footer always at bottom */}
-          <Footer className="mt-auto" />
         </main>
       </div>
     </div>

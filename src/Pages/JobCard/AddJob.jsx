@@ -139,7 +139,7 @@ const AddJob = () => {
   const [jobDate, setJobDate] = useState(() => new Date());
   const [jobLength, setJobLength] = useState("");
   const [jobWidth, setJobWidth] = useState("");
-  const [paperSize, setPaperSize] = useState("");
+  const [paperSize, setPaperSize] = useState(""); // ✅ NEW FIELD
   const [totalPaperRequired, setTotalPaperRequired] = useState("");
   const [jobQty, setJobQty] = useState("");
   const [jobPaper, setJobPaper] = useState("");
@@ -170,7 +170,7 @@ const AddJob = () => {
         setJobDate(data.jobDate ? data.jobDate.toDate() : new Date());
         setJobLength(data.jobLength || "");
         setJobWidth(data.jobWidth || "");
-        setPaperSize(data.paperSize || "");
+        setPaperSize(data.paperSize || ""); // ✅ NEW FIELD
         setTotalPaperRequired(data.totalPaperRequired || "");
         setJobQty(data.jobQty || "");
         setAcrossGap(data.acrossGap || "");
@@ -228,6 +228,11 @@ const AddJob = () => {
   }, []);
 
   useEffect(() => {
+    console.log(isEdit);
+    console.log(id);
+  }, []);
+
+  useEffect(() => {
     const run = async () => {
       if (isEdit && id) {
         await fetchOrderDetails(id);
@@ -241,6 +246,7 @@ const AddJob = () => {
     run();
   }, [isEdit, id]);
 
+  // ✅ UPDATED FORMULA: totalPaperRequired = ((labelSize + aroundGap)*totalLabels)/(1000*across)
   const calculateTotalPaper = useCallback((qty, size, ups, gap) => {
     const totalLabels = parseFloat(qty);
     const labelSize = parseFloat(size);
@@ -277,6 +283,7 @@ const AddJob = () => {
     calculateTotalPaper(jobQty, calculationSize, value, aroundGap);
   };
 
+  // ✅ NEW HANDLER for aroundGap
   const handleAroundGapChange = (e) => {
     const value = e.target.value;
     setAroundGap(value);
@@ -318,9 +325,10 @@ const AddJob = () => {
         customerName,
         jobCardNo,
         jobName,
+        // jobSize,
         jobLength,
         jobWidth,
-        paperSize,
+        paperSize, // ✅ NEW FIELD
         jobQty,
         calculationSize,
         totalPaperRequired,
@@ -346,7 +354,7 @@ const AddJob = () => {
         jobName,
         jobLength,
         jobWidth,
-        paperSize,
+        paperSize, // ✅ NEW FIELD
         jobPaper: findOption(materialTypeList, jobPaper),
         jobQty,
         calculationSize,
@@ -407,6 +415,7 @@ const AddJob = () => {
         setShowPopup(true);
       }
 
+      // navigate back a bit after a short feedback
       setTimeout(() => navigate(-1), 1200);
     } catch (error) {
       console.error("Submit Error:", error);
@@ -435,11 +444,11 @@ const AddJob = () => {
       newErrors.customerName = "Customer Name is required";
     if (!jobLength) newErrors.jobLength = "Job Length is required";
     if (!jobWidth) newErrors.jobWidth = "Job Width is required";
-    if (!paperSize) newErrors.paperSize = "Paper Size is required";
+    if (!paperSize) newErrors.paperSize = "Paper Size is required"; // ✅ NEW VALIDATION
     if (!jobQty) newErrors.jobQty = "Job Quantity is required";
     if (!calculationSize) newErrors.calculationSize = "Label size is required";
     if (!upsAcrossValue) newErrors.upsAcrossValue = "Across Ups is required";
-    if (!aroundGap) newErrors.aroundGap = "Around Gap is required";
+    if (!aroundGap) newErrors.aroundGap = "Around Gap is required"; // ✅ NEW VALIDATION
     if (!totalPaperRequired)
       newErrors.totalPaperRequired = "Total Paper Required is required";
     if (!selectedLabelType)
@@ -606,6 +615,24 @@ const AddJob = () => {
               }}
               error={errors.calculationSize}
             />
+
+            {/* Label Size (for calculation) */}
+            {/* <div>
+              <FloatingInput
+                type="number"
+                name="calculationSize"
+                label=""
+                placeholder="Label Size (for calculation)"
+                value={calculationSize}
+                onChange={(e) => {
+                  handleCalculationSizeChange(e);
+                  setErrors((prev) => ({ ...prev, calculationSize: "" }));
+                }}
+              />
+              {errors.calculationSize && (
+                <p className="text-red-600 text-sm">{errors.calculationSize}</p>
+              )}
+            </div> */}
 
             {/* Across Ups */}
             <FloatingSelect

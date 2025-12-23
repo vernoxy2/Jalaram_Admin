@@ -1,39 +1,48 @@
-import React, { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import React, { useEffect, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
-import { 
-  FaClipboardList, 
-  FaPrint, 
-  FaCut, 
-  FaBoxes, 
+import {
+  FaClipboardList,
+  FaPrint,
+  FaCut,
+  FaBoxes,
   FaCheckCircle,
   FaHourglassHalf,
   FaBox,
   FaExclamationTriangle,
-  FaChartLine,
-  FaTasks
-} from 'react-icons/fa';
-import { GiRolledCloth } from 'react-icons/gi';
-import { MdTrendingUp, MdInventory } from 'react-icons/md';
-import PrimaryBtn from '../Components/PrimaryBtn';
+} from "react-icons/fa";
+import { GiRolledCloth } from "react-icons/gi";
+import { MdInventory } from "react-icons/md";
 
 // Simple Stat Card Component with light pastel colors
-const StatCard = ({ icon: Icon, title, value, unit, bgColor, iconBg, iconColor, textColor }) => (
+const StatCard = ({
+  icon: Icon,
+  title,
+  value,
+  unit,
+  bgColor,
+  iconBg,
+  iconColor,
+  textColor,
+}) => (
   <div className={`${bgColor} rounded-lg p-6 border border-gray-200`}>
-    <div className={`${iconBg} w-12 h-12 rounded-lg flex items-center justify-center mb-4`}>
+    <div
+      className={`${iconBg} w-12 h-12 rounded-lg flex items-center justify-center mb-4`}
+    >
       <Icon className={`text-2xl ${iconColor}`} />
     </div>
     <p className="text-gray-600 font-medium mb-1">{title}</p>
     <h1 className={`${textColor} font-bold`}>
-      {value.toLocaleString()} <span className="text-xl font-semibold text-gray-500">{unit}</span>
+      {value.toLocaleString()}{" "}
+      <span className="text-xl font-semibold text-gray-500">{unit}</span>
     </h1>
   </div>
 );
 
 // Progress Bar Component
 const ProgressBar = ({ label, value, total, color, lightColor }) => {
-  const percentage = total > 0 ? ((value / total) * 100) : 0;
-  
+  const percentage = total > 0 ? (value / total) * 100 : 0;
+
   return (
     <div className="mb-4">
       <div className="flex items-center justify-between mb-2">
@@ -81,76 +90,221 @@ const Dashboard = () => {
       setLoading(true);
 
       // Fetch Jobs Data
-      const jobsSnapshot = await getDocs(collection(db, 'ordersTest'));
-      const jobs = jobsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const jobsSnapshot = await getDocs(collection(db, "ordersTest"));
+      const jobs = jobsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
       setTotalJobs(jobs.length);
-      setPrintingJobs(jobs.filter(j => j.jobStatus === 'Printing').length);
-      setPunchingJobs(jobs.filter(j => j.jobStatus === 'Punching').length);
-      setSlittingJobs(jobs.filter(j => j.jobStatus === 'Slitting').length);
-      setCompletedJobs(jobs.filter(j => j.jobStatus === 'Completed').length);
-      setPendingJobs(jobs.filter(j => j.jobStatus !== 'Completed').length);
+      setPrintingJobs(jobs.filter((j) => j.jobStatus === "Printing").length);
+      setPunchingJobs(jobs.filter((j) => j.jobStatus === "Punching").length);
+      setSlittingJobs(jobs.filter((j) => j.jobStatus === "Slitting").length);
+      setCompletedJobs(jobs.filter((j) => j.jobStatus === "Completed").length);
+      setPendingJobs(jobs.filter((j) => j.jobStatus !== "Completed").length);
 
       // Fetch Materials Data
-      const materialsSnapshot = await getDocs(collection(db, 'materials'));
-      const materials = materialsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const materialsSnapshot = await getDocs(collection(db, "materials"));
+      const materials = materialsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-      const rawMaterials = materials.filter(m => m.materialCategory === 'RAW');
-      const loMaterials = materials.filter(m => m.materialCategory === 'LO');
-      const wipMaterials = materials.filter(m => m.materialCategory === 'WIP');
+      // Fetch Material Transactions
+      const transactionsSnapshot = await getDocs(
+        collection(db, "materialTransactions")
+      );
+      const transactions = transactionsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-      const totalRaw = rawMaterials.reduce((sum, m) => sum + (parseFloat(m.totalRunningMeter) || 0), 0);
-      const totalLo = loMaterials.reduce((sum, m) => sum + (parseFloat(m.totalRunningMeter) || 0), 0);
-      const totalWip = wipMaterials.reduce((sum, m) => sum + (parseFloat(m.totalRunningMeter) || 0), 0);
-      const totalAvailableRaw = rawMaterials.reduce((sum, m) => sum + (parseFloat(m.availableRunningMeter) || 0), 0);
-      const totalAvailableLo = loMaterials.reduce((sum, m) => sum + (parseFloat(m.availableRunningMeter) || 0), 0);
-      const totalAvailableWip = wipMaterials.reduce((sum, m) => sum + (parseFloat(m.availableRunningMeter) || 0), 0);
+      // ✅ Calculate stock using SAME logic as StockReport
+      let totalUsedCalc = 0;
+      let totalWasteCalc = 0;
+      let totalLoCalc = 0;
+      let totalWipCalc = 0;
+
+      materials.forEach((material) => {
+        // Match transactions by paperCode
+        const materialTransactions = transactions.filter((t) => {
+          if (material.materialCategory === "RAW") {
+            const transactionPaperCodes = t.paperProductNo
+              ? t.paperProductNo.split(",").map((code) => code.trim())
+              : [];
+            return transactionPaperCodes.includes(material.paperCode);
+          }
+
+          if (
+            material.materialCategory === "LO" ||
+            material.materialCategory === "WIP"
+          ) {
+            return (
+              t.paperCode === material.paperCode ||
+              t.paperProductCode === material.paperCode ||
+              t.paperProductNo === material.paperCode
+            );
+          }
+
+          return false;
+        });
+
+        let materialUsed = 0;
+        let materialWaste = 0;
+        let materialLO = 0;
+        let materialWIP = 0;
+
+        if (material.materialCategory === "RAW") {
+          // For RAW: Find the LAST stage where material was used
+          const stageOrder = ["printing", "punching", "slitting", "slotting"];
+          let lastStage = null;
+
+          for (let i = stageOrder.length - 1; i >= 0; i--) {
+            const stageTransactions = materialTransactions.filter(
+              (t) => (t.stage || "").toLowerCase() === stageOrder[i]
+            );
+            if (stageTransactions.length > 0) {
+              lastStage = stageOrder[i];
+              break;
+            }
+          }
+
+          if (lastStage) {
+            const lastStageTransactions = materialTransactions.filter(
+              (t) => (t.stage || "").toLowerCase() === lastStage
+            );
+            materialUsed = lastStageTransactions.reduce(
+              (sum, t) => sum + (parseFloat(t.usedQty) || 0),
+              0
+            );
+          }
+
+          // Sum waste, LO, WIP across ALL stages
+          materialWaste = materialTransactions
+            .filter((t) => t.transactionType === "consumption")
+            .reduce((sum, t) => sum + (parseFloat(t.wasteQty) || 0), 0);
+
+          materialLO = materialTransactions
+            .filter((t) => t.transactionType === "consumption")
+            .reduce((sum, t) => sum + (parseFloat(t.loQty) || 0), 0);
+
+          materialWIP = materialTransactions
+            .filter((t) => t.transactionType === "consumption")
+            .reduce((sum, t) => sum + (parseFloat(t.wipQty) || 0), 0);
+        } else if (
+          material.materialCategory === "LO" ||
+          material.materialCategory === "WIP"
+        ) {
+          const consumptionTransactions = materialTransactions.filter(
+            (t) => t.transactionType === "consumption"
+          );
+
+          if (consumptionTransactions.length > 0) {
+            const created = material.totalRunningMeter || 0;
+
+            materialWaste = consumptionTransactions.reduce(
+              (sum, t) => sum + (parseFloat(t.wasteQty) || 0),
+              0
+            );
+            materialLO = consumptionTransactions.reduce(
+              (sum, t) => sum + (parseFloat(t.loQty) || 0),
+              0
+            );
+            materialWIP = consumptionTransactions.reduce(
+              (sum, t) => sum + (parseFloat(t.wipQty) || 0),
+              0
+            );
+
+            materialUsed = created - (materialWaste + materialLO + materialWIP);
+            if (materialUsed < 0) materialUsed = 0;
+          }
+        }
+
+        totalUsedCalc += materialUsed;
+        totalWasteCalc += materialWaste;
+        totalLoCalc += materialLO;
+        totalWipCalc += materialWIP;
+      });
+
+      // Calculate totals
+      const rawMaterials = materials.filter(
+        (m) => m.materialCategory === "RAW"
+      );
+      const loMaterials = materials.filter((m) => m.materialCategory === "LO");
+      const wipMaterials = materials.filter(
+        (m) => m.materialCategory === "WIP"
+      );
+
+      const totalRaw = rawMaterials.reduce(
+        (sum, m) => sum + (parseFloat(m.totalRunningMeter) || 0),
+        0
+      );
+      const totalLo = loMaterials.reduce(
+        (sum, m) => sum + (parseFloat(m.totalRunningMeter) || 0),
+        0
+      );
+      const totalWip = wipMaterials.reduce(
+        (sum, m) => sum + (parseFloat(m.totalRunningMeter) || 0),
+        0
+      );
+
+      const totalAvailableRaw = rawMaterials.reduce(
+        (sum, m) => sum + (parseFloat(m.availableRunningMeter) || 0),
+        0
+      );
+      const totalAvailableLo = loMaterials.reduce(
+        (sum, m) => sum + (parseFloat(m.availableRunningMeter) || 0),
+        0
+      );
+      const totalAvailableWip = wipMaterials.reduce(
+        (sum, m) => sum + (parseFloat(m.availableRunningMeter) || 0),
+        0
+      );
 
       setRawPurchased(totalRaw);
       setLoCreated(totalLo);
       setWipCreated(totalWip);
-      setTotalAvailable(totalAvailableRaw + totalAvailableLo + totalAvailableWip);
-
-      // Fetch Material Transactions
-      const transactionsSnapshot = await getDocs(collection(db, 'materialTransactions'));
-      const transactions = transactionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      const usedTransactions = transactions.filter(t => t.transactionType === 'used');
-      const wasteTransactions = transactions.filter(t => t.transactionType === 'waste');
-
-      const totalUsedAmount = usedTransactions.reduce((sum, t) => sum + (parseFloat(t.runningMeter) || 0), 0);
-      const totalWasteAmount = wasteTransactions.reduce((sum, t) => sum + (parseFloat(t.runningMeter) || 0), 0);
-
-      setTotalUsed(totalUsedAmount);
-      setTotalWaste(totalWasteAmount);
+      setTotalUsed(totalUsedCalc);
+      setTotalWaste(totalWasteCalc);
+      setTotalAvailable(
+        totalAvailableRaw + totalAvailableLo + totalAvailableWip
+      );
 
       // Fetch Material Requests
-      const requestsSnapshot = await getDocs(collection(db, 'materialRequest'));
-      const requests = requestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const requestsSnapshot = await getDocs(collection(db, "materialRequest"));
+      const requests = requestsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-      setPendingRequests(requests.filter(r => r.requestStatus === 'Pending').length);
-      setApprovedRequests(requests.filter(r => r.requestStatus === 'Approved').length);
+      setPendingRequests(requests.filter((r) => r.isIssued === false).length);
+      setApprovedRequests(requests.filter((r) => r.isIssued === true).length);
 
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error("Error fetching dashboard data:", error);
       setLoading(false);
     }
   };
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const loadData = async () => {
       if (isMounted) {
         await fetchDashboardData();
       }
     };
-    
+
     loadData();
-    
+
+    const interval = setInterval(() => {
+      loadData();
+    }, 15000);
+
     return () => {
       isMounted = false;
+      clearInterval(interval);
     };
   }, []);
 
@@ -162,38 +316,29 @@ const Dashboard = () => {
             <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-100 mx-auto mb-6"></div>
             <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-blue-600 absolute top-0 left-1/2 transform -translate-x-1/2"></div>
           </div>
-          <p className="text-gray-700 font-semibold text-lg">Loading Dashboard</p>
+          <p className="text-gray-700 font-semibold text-lg">
+            Loading Dashboard
+          </p>
           <p className="text-gray-500 text-sm mt-1">Please wait...</p>
         </div>
       </div>
     );
   }
 
-
   return (
     <div className="min-h-screen bg-white">
       <div className=" mx-auto">
-        
-        {/* Header Section */}
         <div className="mb-8">
           <h1 className="">Dashboard</h1>
-          <hr className='my-4' />
+          <hr className="my-4" />
           <div className="flex items-center justify-between">
-            <p className="text-gray-600">Label printing production and inventory overview</p>
-            {/* <button 
-              onClick={fetchDashboardData}
-              className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Refresh
-            </button> */}
-            <PrimaryBtn onClick={fetchDashboardData} className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium">Refresh</PrimaryBtn>
+            <p className="text-gray-600">
+              Label printing production and inventory overview
+            </p>
           </div>
         </div>
 
-        {/* Stock Report Cards - Main Section with Pastel Colors */}
+        {/* Stock Report Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 mb-8">
           <StatCard
             icon={FaBox}
@@ -260,7 +405,7 @@ const Dashboard = () => {
         {/* Job Statistics Section */}
         <div className="bg-white rounded-lg p-6 mb-8 border border-gray-200">
           <h2 className="text-xl font-bold text-primary mb-6">Job Overview</h2>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
             <div className="bg-white rounded-lg p-5 border border-gray-200">
               <div className="bg-gray-100 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
@@ -269,7 +414,7 @@ const Dashboard = () => {
               <p className="text-gray-600  font-medium mb-1">Total Jobs</p>
               <p className="text-gray-800 text-3xl font-bold">{totalJobs}</p>
             </div>
-            
+
             <div className="bg-white rounded-lg p-5 border border-gray-200">
               <div className="bg-purple-100 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
                 <FaPrint className="text-2xl text-purple-600" />
@@ -277,7 +422,7 @@ const Dashboard = () => {
               <p className="text-gray-600 font-medium mb-1">Printing</p>
               <p className="text-purple-600 text-3xl font-bold">{printingJobs}</p>
             </div>
-            
+
             <div className="bg-white rounded-lg p-5 border border-gray-200">
               <div className="bg-orange-100 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
                 <FaBoxes className="text-2xl text-orange-600" />
@@ -285,7 +430,7 @@ const Dashboard = () => {
               <p className="text-gray-600 font-medium mb-1">Punching</p>
               <p className="text-orange-600 text-3xl font-bold">{punchingJobs}</p>
             </div>
-            
+
             <div className="bg-white rounded-lg p-5 border border-gray-200">
               <div className="bg-teal-100 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
                 <FaCut className="text-2xl text-teal-600" />
@@ -293,7 +438,7 @@ const Dashboard = () => {
               <p className="text-gray-600  font-medium mb-1">Slitting</p>
               <p className="text-teal-600 text-3xl font-bold">{slittingJobs}</p>
             </div>
-            
+
             <div className="bg-white rounded-lg p-5 border border-gray-200">
               <div className="bg-green-100 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
                 <FaCheckCircle className="text-2xl text-green-600" />
@@ -301,7 +446,7 @@ const Dashboard = () => {
               <p className="text-gray-600  font-medium mb-1">Completed</p>
               <p className="text-green-600 text-3xl font-bold">{completedJobs}</p>
             </div>
-            
+
             <div className="bg-white rounded-lg p-5 border border-gray-200">
               <div className="bg-yellow-100 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
                 <FaHourglassHalf className="text-2xl text-yellow-600" />
@@ -314,10 +459,10 @@ const Dashboard = () => {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          
-          {/* Job Distribution */}
           <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-lg font-bold text-primary mb-6">Job Status Distribution</h3>
+            <h3 className="text-lg font-bold text-primary mb-6">
+              Job Status Distribution
+            </h3>
             <div className="space-y-4">
               <ProgressBar
                 label="Printing"
@@ -350,42 +495,53 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Material Distribution */}
           <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-lg font-bold text-primary mb-6">Material Stock Breakdown</h3>
+            <h3 className="text-lg font-bold text-primary mb-6">
+              Material Stock Breakdown
+            </h3>
             <div className="space-y-4">
               <ProgressBar
                 label="RAW Material"
                 value={rawPurchased}
-                total={rawPurchased + loCreated + wipCreated + totalUsed + totalWaste}
+                total={
+                  rawPurchased + loCreated + wipCreated + totalUsed + totalWaste
+                }
                 color="bg-blue-500"
                 lightColor="bg-blue-100"
               />
               <ProgressBar
                 label="LO Material"
                 value={loCreated}
-                total={rawPurchased + loCreated + wipCreated + totalUsed + totalWaste}
+                total={
+                  rawPurchased + loCreated + wipCreated + totalUsed + totalWaste
+                }
                 color="bg-yellow-500"
                 lightColor="bg-yellow-100"
               />
               <ProgressBar
                 label="WIP Material"
                 value={wipCreated}
-                total={rawPurchased + loCreated + wipCreated + totalUsed + totalWaste}
+                total={
+                  rawPurchased + loCreated + wipCreated + totalUsed + totalWaste
+                }
                 color="bg-purple-500"
                 lightColor="bg-purple-100"
               />
               <ProgressBar
                 label="Total Used"
                 value={totalUsed}
-                total={rawPurchased + loCreated + wipCreated + totalUsed + totalWaste}
+                total={
+                  rawPurchased + loCreated + wipCreated + totalUsed + totalWaste
+                }
                 color="bg-green-500"
                 lightColor="bg-green-100"
               />
               <ProgressBar
                 label="Total Waste"
                 value={totalWaste}
-                total={rawPurchased + loCreated + wipCreated + totalUsed + totalWaste}
+                total={
+                  rawPurchased + loCreated + wipCreated + totalUsed + totalWaste
+                }
                 color="bg-red-500"
                 lightColor="bg-red-100"
               />
@@ -395,8 +551,10 @@ const Dashboard = () => {
 
         {/* Material Requests Section */}
         <div className="bg-white rounded-lg p-6 border border-gray-200">
-          <h2 className="text-xl font-bold text-primary mb-6">Material Requests</h2>
-          
+          <h2 className="text-xl font-bold text-primary mb-6">
+            Material Requests
+          </h2>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-yellow-50 rounded-lg p-6 border border-yellow-200">
               <div className="flex items-center justify-between mb-4">
@@ -410,7 +568,7 @@ const Dashboard = () => {
               <p className="text-gray-600 font-medium mb-1">Pending Requests</p>
               <p className="text-yellow-600 text-4xl font-bold">{pendingRequests}</p>
             </div>
-            
+
             <div className="bg-green-50 rounded-lg p-6 border border-green-200">
               <div className="flex items-center justify-between mb-4">
                 <div className="bg-green-100 w-12 h-12 rounded-lg flex items-center justify-center">
@@ -425,7 +583,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

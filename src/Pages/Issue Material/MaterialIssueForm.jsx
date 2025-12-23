@@ -14,6 +14,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { FaCaretRight } from "react-icons/fa6";
+import { FiSearch } from "react-icons/fi";
 import { materialTypeList, paperProductCodeData } from "../../utils/constant";
 import BackButton from "../../Components/BackButton";
 import SuccessPopup from "../../Components/SuccessPopup";
@@ -33,6 +34,7 @@ const MaterialIssueForm = () => {
     requestedMaterial: "",
     requestDate: "",
     alloteDate: "",
+    customerName: "",
   });
 
   const [jobPaper, setJobPaper] = useState("");
@@ -42,6 +44,11 @@ const MaterialIssueForm = () => {
   const [LO, setLO] = useState([]);
   const [WIP, setWIP] = useState([]);
   const [RAW, setRAW] = useState([]);
+
+  // Search states for each table
+  const [searchLO, setSearchLO] = useState("");
+  const [searchWIP, setSearchWIP] = useState("");
+  const [searchRAW, setSearchRAW] = useState("");
 
   const { id } = useParams();
 
@@ -54,7 +61,6 @@ const MaterialIssueForm = () => {
         setLoading(false);
         return;
       }
-
       setLoading(true);
       setError(null);
       try {
@@ -70,12 +76,13 @@ const MaterialIssueForm = () => {
                 .split("T")[0]
             : data.createdAt || "";
 
-          // ✅ Calculate remaining material correctly
           const totalRequired = Number(
             data.requiredMaterial || data.requestedMaterial || 0
           );
           const alreadyIssued = Number(data.issuedMeter || 0);
-          const remaining = totalRequired - alreadyIssued;
+          // const remaining = totalRequired - alreadyIssued;
+          const remaining =
+            Math.round((totalRequired - alreadyIssued) * 100) / 100;
 
           setFormData({
             jobCardNo: data.jobCardNo || "",
@@ -84,6 +91,7 @@ const MaterialIssueForm = () => {
             requestedMaterial: remaining > 0 ? remaining : 0,
             requestDate: requestDate,
             alloteDate: new Date().toISOString().split("T")[0],
+            customerName: data.customerName || "",
           });
 
           setJobPaper(data.jobPaper?.value || data.jobPaper || "");
@@ -105,7 +113,7 @@ const MaterialIssueForm = () => {
   }, [id]);
 
   /* -------------------------------------------------------------
-     2) FETCH MATERIALS WITH SORTING BY CREATED DATE & TIME (OLDEST FIRST)
+     2) FETCH MATERIALS WITH ROLL & RUNNING METER INFO
   --------------------------------------------------------------- */
   useEffect(() => {
     if (!paperProductCode || !jobPaper || !formData.paperSize) return;
@@ -117,6 +125,16 @@ const MaterialIssueForm = () => {
         const stringPaperSize = String(formData.paperSize);
         const numberPaperSize = Number(formData.paperSize);
 
+        // Fetch orders for customer names
+        const ordersSnapshot = await getDocs(collection(db, "ordersTest"));
+        const ordersMap = {};
+        ordersSnapshot.docs.forEach((doc) => {
+          const orderData = doc.data();
+          if (orderData.jobCardNo) {
+            ordersMap[orderData.jobCardNo] = orderData.customerName || "-";
+          }
+        });
+
         const baseConditions = [
           where("paperProductCode", "==", paperProductCode),
           where("jobPaper", "==", jobPaper),
@@ -124,27 +142,23 @@ const MaterialIssueForm = () => {
           where("isActive", "==", true),
         ];
 
-        // ✅ Helper function to extract timestamp in milliseconds (includes date AND time)
         const getTimestamp = (timestamp) => {
           if (!timestamp) return 0;
-          // Firestore Timestamp with seconds and nanoseconds
           if (timestamp.seconds !== undefined) {
             return (
               timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000
             );
           }
-          // Firestore Timestamp with toMillis method
           if (typeof timestamp.toMillis === "function") {
             return timestamp.toMillis();
           }
-          // JavaScript Date object
           if (timestamp instanceof Date) {
             return timestamp.getTime();
           }
           return 0;
         };
 
-        // RAW Materials Query
+        // ✅ RAW Materials Query
         const rawQuery = query(
           collection(db, "materials"),
           ...baseConditions,
@@ -158,14 +172,16 @@ const MaterialIssueForm = () => {
             ...doc.data(),
             paperCode: doc.data().paperCode,
             availableMeter: doc.data().availableRunningMeter || 0,
-            rack: doc.data().rack || "N/A",
+            totalRolls: doc.data().roll || 0,
+            runningMeter: doc.data().runningMeter || 0,
+            // rack: doc.data().rack || "N/A",
             createdAt: doc.data().createdAt,
           }))
           .sort(
             (a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt)
           );
 
-        // LO Materials Query
+        // ✅ LO Materials Query (No customer filtering - can be used for any customer)
         const loQuery = query(
           collection(db, "materials"),
           ...baseConditions,
@@ -174,20 +190,24 @@ const MaterialIssueForm = () => {
 
         const loSnapshot = await getDocs(loQuery);
         const loList = loSnapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            paperCode: doc.data().paperCode,
-            availableMeter: doc.data().availableRunningMeter || 0,
-            rack: doc.data().rack || "N/A",
-            sourceJobCardNo: doc.data().sourceJobCardNo,
-            createdAt: doc.data().createdAt,
-          }))
+          .map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              paperCode: data.paperCode,
+              availableMeter: data.availableRunningMeter || 0,
+              // rack: data.rack || "N/A",
+              sourceJobCardNo: data.sourceJobCardNo,
+              customerName: ordersMap[data.sourceJobCardNo] || "-",
+              createdAt: data.createdAt,
+            };
+          })
           .sort(
             (a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt)
           );
 
-        // WIP Materials Query
+        // ✅ WIP Materials Query (Filter by customer name)
         const wipQuery = query(
           collection(db, "materials"),
           ...baseConditions,
@@ -196,16 +216,28 @@ const MaterialIssueForm = () => {
 
         const wipSnapshot = await getDocs(wipQuery);
         const wipList = wipSnapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            paperCode: doc.data().paperCode,
-            availableMeter: doc.data().availableRunningMeter || 0,
-            rack: doc.data().rack || "N/A",
-            stage: doc.data().sourceStage || "Unknown",
-            sourceJobCardNo: doc.data().sourceJobCardNo,
-            createdAt: doc.data().createdAt,
-          }))
+          .map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              paperCode: data.paperCode,
+              availableMeter: data.availableRunningMeter || 0,
+              // rack: data.rack || "N/A",
+              stage: data.sourceStage || "Unknown",
+              sourceJobCardNo: data.sourceJobCardNo,
+              customerName: ordersMap[data.sourceJobCardNo] || "-",
+              createdAt: data.createdAt,
+            };
+          })
+          // ✅ Filter WIP by customer name - only show materials from same customer
+          .filter((wip) => {
+            const wipCustomerName = wip.customerName.toLowerCase().trim();
+            const currentCustomerName = (formData.customerName || "")
+              .toLowerCase()
+              .trim();
+            return wipCustomerName === currentCustomerName;
+          })
           .sort(
             (a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt)
           );
@@ -213,20 +245,6 @@ const MaterialIssueForm = () => {
         setRAW(rawList);
         setLO(loList);
         setWIP(wipList);
-
-        // ✅ Debug log to verify sorting (remove after testing)
-        console.log("✅ RAW Materials (sorted by createdAt - oldest first):");
-        rawList.forEach((item, index) => {
-          console.log(
-            `  ${index + 1}. ${item.paperCode} - ${
-              item.createdAt?.seconds
-                ? new Date(item.createdAt.seconds * 1000).toLocaleString(
-                    "en-GB"
-                  )
-                : "N/A"
-            }`
-          );
-        });
       } catch (error) {
         console.error("Error fetching materials:", error);
       } finally {
@@ -235,7 +253,7 @@ const MaterialIssueForm = () => {
     };
 
     fetchMaterials();
-  }, [paperProductCode, jobPaper, formData.paperSize]);
+  }, [paperProductCode, jobPaper, formData.paperSize, formData.customerName]);
 
   /* -------------------------------------------------------------
      3) HELPER FUNCTION TO FORMAT DATE (DISPLAY ONLY)
@@ -252,11 +270,64 @@ const MaterialIssueForm = () => {
       return "N/A";
     }
 
-    return date.toLocaleDateString("en-GB"); // DD/MM/YYYY format
+    return date.toLocaleDateString("en-GB");
   };
 
   /* -------------------------------------------------------------
-     4) HANDLE SELECT / ISSUE METER CHANGE  
+     4) FILTER FUNCTIONS FOR SEARCH
+  --------------------------------------------------------------- */
+  const filterMaterials = (materials, searchTerm, type) => {
+    if (!searchTerm) return materials;
+
+    const search = searchTerm.toLowerCase().trim();
+
+    return materials.filter((item) => {
+      const paperCode = (item.paperCode || "").toLowerCase();
+      const availableMeter = String(item.availableMeter || "");
+      // const rack = (item.rack || "").toLowerCase();
+      const sourceJobCardNo = (item.sourceJobCardNo || "").toLowerCase();
+      const customerName = (item.customerName || "").toLowerCase();
+      const createdDate = formatDate(item.createdAt).toLowerCase();
+
+      // Common fields for all types
+      let matches =
+        paperCode.includes(search) ||
+        availableMeter.includes(search) ||
+        // rack.includes(search) ||
+        createdDate.includes(search);
+
+      // Type-specific fields
+      if (type === "RAW") {
+        const totalRolls = String(item.totalRolls || "");
+        const runningMeter = String(item.runningMeter || "");
+        matches =
+          matches ||
+          totalRolls.includes(search) ||
+          runningMeter.includes(search);
+      }
+
+      if (type === "LO" || type === "WIP") {
+        matches =
+          matches ||
+          sourceJobCardNo.includes(search) ||
+          customerName.includes(search);
+      }
+
+      if (type === "WIP") {
+        const stage = (item.stage || "").toLowerCase();
+        matches = matches || stage.includes(search);
+      }
+
+      return matches;
+    });
+  };
+
+  const filteredLO = filterMaterials(LO, searchLO, "LO");
+  const filteredWIP = filterMaterials(WIP, searchWIP, "WIP");
+  const filteredRAW = filterMaterials(RAW, searchRAW, "RAW");
+
+  /* -------------------------------------------------------------
+     5) HANDLE SELECT / ISSUE METER & ROLLS CHANGE  
   --------------------------------------------------------------- */
   const handleSelect = (materialType, roll) => {
     const exists = selectedRolls.find((item) => item.id === roll.id);
@@ -264,29 +335,55 @@ const MaterialIssueForm = () => {
     if (exists) {
       setSelectedRolls(selectedRolls.filter((item) => item.id !== roll.id));
     } else {
-      setSelectedRolls([
-        ...selectedRolls,
-        {
-          ...roll,
-          materialType,
-          issuedMeter: roll.availableMeter,
-        },
-      ]);
+      // ✅ For RAW materials ONLY, calculate issued meter based on rolls
+      // For LO/WIP, use available meter (manual entry) and NO roll tracking
+      if (materialType === "RAW") {
+        const defaultIssuedRolls = roll.totalRolls;
+        const defaultIssuedMeter = roll.runningMeter * defaultIssuedRolls;
+
+        setSelectedRolls([
+          ...selectedRolls,
+          {
+            ...roll,
+            materialType,
+            issuedMeter: defaultIssuedMeter,
+            issuedRolls: defaultIssuedRolls,
+          },
+        ]);
+      } else {
+        // LO/WIP: No roll tracking, only meter
+        setSelectedRolls([
+          ...selectedRolls,
+          {
+            ...roll,
+            materialType,
+            issuedMeter: roll.availableMeter,
+            issuedRolls: 0, // Not applicable for LO/WIP
+          },
+        ]);
+      }
     }
   };
 
-  // ✅ CHANGE 3: Validate issued meter doesn't exceed available meter
+  // ✅ Handle issued meter change - Only for LO/WIP (RAW is auto-calculated)
   const handleMeterChange = (id, meter) => {
     const roll = [...RAW, ...LO, ...WIP].find((r) => r.id === id);
+    const selectedRoll = selectedRolls.find((r) => r.id === id);
     const meterValue = Number(meter);
 
-    // Don't allow negative values
     if (meterValue < 0) return;
 
-    // Don't allow values greater than available meter
     if (roll && meterValue > roll.availableMeter) {
       alert(
         `Issue meter cannot exceed available meter (${roll.availableMeter})`
+      );
+      return;
+    }
+
+    // ✅ Don't allow manual meter change for RAW materials
+    if (selectedRoll && selectedRoll.materialType === "RAW") {
+      alert(
+        "For RAW materials, meter is automatically calculated based on rolls"
       );
       return;
     }
@@ -298,13 +395,51 @@ const MaterialIssueForm = () => {
     );
   };
 
+  // ✅ Handle issued rolls change - RAW ONLY
+  const handleRollsChange = (id, rolls) => {
+    const roll = [...RAW, ...LO, ...WIP].find((r) => r.id === id);
+    const rollsValue = Number(rolls);
+
+    if (rollsValue < 0) return;
+
+    if (roll && rollsValue > roll.totalRolls) {
+      alert(`Issued rolls cannot exceed available rolls (${roll.totalRolls})`);
+      return;
+    }
+
+    setSelectedRolls((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          // ✅ Auto-calculate meter for RAW materials only
+          if (item.materialType === "RAW") {
+            const calculatedMeter = roll.runningMeter * rollsValue;
+            return {
+              ...item,
+              issuedRolls: rolls,
+              issuedMeter: calculatedMeter,
+            };
+          }
+        }
+        return item;
+      })
+    );
+  };
+
   const totalIssued = selectedRolls.reduce(
-    (sum, item) => sum + Number(item.issuedMeter),
+    (sum, item) => sum + Number(item.issuedMeter || 0),
     0
   );
 
+  // ✅ Calculate total rolls issued (RAW only)
+  const totalRollsIssued = selectedRolls.reduce((sum, item) => {
+    if (item.materialType === "RAW") {
+      return sum + Number(item.issuedRolls || 0);
+    }
+    return sum;
+  }, 0);
+
   /* -------------------------------------------------------------
-     5) ISSUE MATERIAL & SUBTRACT STOCK IN FIRESTORE + UPDATE ORDER
+     6) ISSUE MATERIAL & SUBTRACT STOCK IN FIRESTORE + UPDATE ORDER
   --------------------------------------------------------------- */
   const handleIssue = async () => {
     if (selectedRolls.length === 0) {
@@ -312,10 +447,16 @@ const MaterialIssueForm = () => {
       return;
     }
 
-    // ✅ CHANGE 1: Validate total issued doesn't exceed requested material
-    if (totalIssued > formData.requestedMaterial) {
+    // ✅ Validate rolls are entered FOR RAW MATERIALS ONLY
+    const missingRolls = selectedRolls.filter(
+      (roll) =>
+        roll.materialType === "RAW" &&
+        (!roll.issuedRolls || Number(roll.issuedRolls) <= 0)
+    );
+
+    if (missingRolls.length > 0) {
       alert(
-        `Total issued meter (${totalIssued}) cannot exceed remaining required material (${formData.requestedMaterial})`
+        "Please enter the number of rolls to issue for all selected RAW materials"
       );
       return;
     }
@@ -333,10 +474,28 @@ const MaterialIssueForm = () => {
       return;
     }
 
+    // ✅ Validate roll counts FOR RAW MATERIALS ONLY
+    const invalidRollCounts = selectedRolls.filter(
+      (roll) =>
+        roll.materialType === "RAW" &&
+        Number(roll.issuedRolls) > roll.totalRolls
+    );
+
+    if (invalidRollCounts.length > 0) {
+      alert(
+        `Cannot issue more rolls than available for: ${invalidRollCounts
+          .map((r) => r.paperCode)
+          .join(", ")}`
+      );
+      return;
+    }
+
     try {
       // STEP 1: Deduct stock + create transactions
       for (const roll of selectedRolls) {
         const issuedQty = Number(roll.issuedMeter);
+        const issuedRollCount =
+          roll.materialType === "RAW" ? Number(roll.issuedRolls) : 0;
         const newAvailableMeter = roll.availableMeter - issuedQty;
 
         await updateDoc(doc(db, "materials", roll.id), {
@@ -345,7 +504,7 @@ const MaterialIssueForm = () => {
           updatedAt: new Date(),
         });
 
-        await addDoc(collection(db, "materialTransactions"), {
+        const transactionData = {
           transactionType: "issue",
           transactionDate: serverTimestamp(),
           jobCardNo: formData.jobCardNo,
@@ -360,8 +519,17 @@ const MaterialIssueForm = () => {
           newPaperCode: null,
           newMaterialId: null,
           createdBy: "Admin",
-          remarks: `Issued ${issuedQty}m for job ${formData.jobCardNo}`,
-        });
+        };
+
+        // ✅ Only add roll count for RAW materials
+        if (roll.materialType === "RAW") {
+          transactionData.issuedRolls = issuedRollCount;
+          transactionData.remarks = `Issued ${issuedQty}m (${issuedRollCount} rolls) for job ${formData.jobCardNo}`;
+        } else {
+          transactionData.remarks = `Issued ${issuedQty}m for job ${formData.jobCardNo}`;
+        }
+
+        await addDoc(collection(db, "materialTransactions"), transactionData);
       }
 
       // STEP 2: Get previous issued/remaining values
@@ -384,7 +552,6 @@ const MaterialIssueForm = () => {
       let remainingMeter = originalRequestedMeter - newIssuedTotal;
       if (remainingMeter < 0) remainingMeter = 0;
 
-      // Only mark as issued when fully allocated
       const isIssued = newIssuedTotal >= originalRequestedMeter;
 
       // STEP 4: Update materialRequest document
@@ -408,7 +575,6 @@ const MaterialIssueForm = () => {
         const orderRef = doc(db, "ordersTest", orderDoc.id);
         const currentOrderData = orderDoc.data();
 
-        // ✅ FIX: Find next available index for each roll separately
         const findNextAvailableIndex = () => {
           let index = 0;
           while (
@@ -421,7 +587,6 @@ const MaterialIssueForm = () => {
 
         const materialUpdates = {};
 
-        // ✅ FIX: Create separate entries for EACH selected roll
         selectedRolls.forEach((roll) => {
           const targetIndex = findNextAvailableIndex();
           const suffix = targetIndex === 0 ? "" : targetIndex;
@@ -435,17 +600,25 @@ const MaterialIssueForm = () => {
             value: roll.paperProductCode,
           };
 
-          // ✅ Store individual paperCode, not comma-separated list
           materialUpdates[`paperProductNo${suffix}`] = roll.paperCode;
 
-          // ✅ Store individual issuedMeter for this specific roll
+          materialUpdates[`jobPaper${suffix}`] = {
+            label: roll.jobPaper || "-",
+            value: roll.jobPaper || "-",
+          };
+
           materialUpdates[`allocatedQty${suffix}`] = Number(roll.issuedMeter);
 
-          // ✅ Store material category for this specific roll
+          // ✅ Only store roll count for RAW materials
+          if (roll.materialType === "RAW") {
+            materialUpdates[`allocatedRolls${suffix}`] = Number(
+              roll.issuedRolls
+            );
+          }
+
           materialUpdates[`materialCategory${suffix}`] =
             roll.materialCategory || "RAW";
 
-          // Update the currentOrderData to reflect the new entry
           currentOrderData[`paperProductCode${suffix}`] =
             materialUpdates[`paperProductCode${suffix}`];
         });
@@ -465,7 +638,6 @@ const MaterialIssueForm = () => {
         console.warn("⚠️ No order found with jobCardNo:", formData.jobCardNo);
       }
 
-      // alert("Material issued successfully! Job status updated to 'Allocated'.");
       setShowPopup(true);
       setSelectedRolls([]);
 
@@ -477,7 +649,7 @@ const MaterialIssueForm = () => {
   };
 
   /* -------------------------------------------------------------
-     6) INPUT HANDLER
+     7) INPUT HANDLER
   --------------------------------------------------------------- */
   const handleChange = (e) => {
     setFormData({
@@ -544,6 +716,12 @@ const MaterialIssueForm = () => {
               name="jobName"
               value={formData.jobName}
               onChange={handleChange}
+              readOnly
+            />
+            <Input
+              label="Customer Name"
+              name="customerName"
+              value={formData.customerName}
               readOnly
             />
             <Input
@@ -616,51 +794,86 @@ const MaterialIssueForm = () => {
             </div>
           ) : (
             <div className="space-y-5">
-              <h2 className="flex items-center ">
-                <span>
-                  <FaCaretRight className="text-2xl" />
-                </span>
-                Leftover (LO)
-              </h2>
-              <MaterialTable
-                title="Leftover (LO)"
-                data={LO}
-                type="LO"
-                onSelect={handleSelect}
-                selected={selectedRolls}
-                onMeterChange={handleMeterChange}
-                formatDate={formatDate}
-              />
-              <h2 className="flex items-center ">
-                <span>
-                  <FaCaretRight className="text-2xl" />
-                </span>
-                Work In Process (WIP)
-              </h2>
-              <MaterialTable
-                title="Work In Process (WIP)"
-                data={WIP}
-                type="WIP"
-                onSelect={handleSelect}
-                selected={selectedRolls}
-                onMeterChange={handleMeterChange}
-                formatDate={formatDate}
-              />
-              <h2 className="flex items-center ">
-                <span>
-                  <FaCaretRight className="text-2xl" />
-                </span>
-                Raw Material
-              </h2>
-              <MaterialTable
-                title="Raw Material"
-                data={RAW}
-                type="RAW"
-                onSelect={handleSelect}
-                selected={selectedRolls}
-                onMeterChange={handleMeterChange}
-                formatDate={formatDate}
-              />
+              {/* LO Section */}
+              <div className="space-y-3">
+                <h2 className="flex items-center ">
+                  <span>
+                    <FaCaretRight className="text-2xl" />
+                  </span>
+                  Leftover (LO)
+                </h2>
+
+                <SearchBar
+                  value={searchLO}
+                  onChange={setSearchLO}
+                  placeholder="Search LO materials (Paper Code, Available Meter, Source Job, Customer, Date...)"
+                />
+
+                <MaterialTable
+                  title="Leftover (LO)"
+                  data={filteredLO}
+                  type="LO"
+                  onSelect={handleSelect}
+                  selected={selectedRolls}
+                  onMeterChange={handleMeterChange}
+                  onRollsChange={handleRollsChange}
+                  formatDate={formatDate}
+                />
+              </div>
+
+              {/* WIP Section */}
+              <div className="space-y-3">
+                <h2 className="flex items-center ">
+                  <span>
+                    <FaCaretRight className="text-2xl" />
+                  </span>
+                  Work In Process (WIP)
+                </h2>
+
+                <SearchBar
+                  value={searchWIP}
+                  onChange={setSearchWIP}
+                  placeholder="Search WIP materials (Paper Code, Stage, Available Meter, Source Job, Customer, Date...)"
+                />
+
+                <MaterialTable
+                  title="Work In Process (WIP)"
+                  data={filteredWIP}
+                  type="WIP"
+                  onSelect={handleSelect}
+                  selected={selectedRolls}
+                  onMeterChange={handleMeterChange}
+                  onRollsChange={handleRollsChange}
+                  formatDate={formatDate}
+                />
+              </div>
+
+              {/* RAW Section */}
+              <div className="space-y-3">
+                <h2 className="flex items-center ">
+                  <span>
+                    <FaCaretRight className="text-2xl" />
+                  </span>
+                  Raw Material
+                </h2>
+
+                <SearchBar
+                  value={searchRAW}
+                  onChange={setSearchRAW}
+                  placeholder="Search RAW materials (Paper Code, Rolls, Running Meter, Available Meter, Date...)"
+                />
+
+                <MaterialTable
+                  title="Raw Material"
+                  data={filteredRAW}
+                  type="RAW"
+                  onSelect={handleSelect}
+                  selected={selectedRolls}
+                  onMeterChange={handleMeterChange}
+                  onRollsChange={handleRollsChange}
+                  formatDate={formatDate}
+                />
+              </div>
             </div>
           )}
 
@@ -670,13 +883,14 @@ const MaterialIssueForm = () => {
                 <tr className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-white">
                   <th className="p-2 border">Material Type</th>
                   <th className="p-2 border">Paper Code</th>
+                  <th className="p-2 border">Rolls</th>
                   <th className="p-2 border">Issued Meter</th>
                 </tr>
               </thead>
               <tbody className="text-base">
                 {selectedRolls.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="p-4 text-gray-500">
+                    <td colSpan={4} className="p-4 text-gray-500">
                       No materials selected
                     </td>
                   </tr>
@@ -685,7 +899,12 @@ const MaterialIssueForm = () => {
                     <tr key={item.id}>
                       <td className="p-2 border">{item.materialType}</td>
                       <td className="p-2 border">{item.paperCode}</td>
-                      <td className="p-2 border">{item.issuedMeter}</td>
+                      <td className="p-2 border">
+                        {item.materialType === "RAW"
+                          ? item.issuedRolls || 0
+                          : "-"}
+                      </td>
+                      <td className="p-2 border">{item.issuedMeter}m</td>
                     </tr>
                   ))
                 )}
@@ -694,9 +913,12 @@ const MaterialIssueForm = () => {
               <tfoot>
                 <tr className="font-bold bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-white">
                   <td className="p-2 border" colSpan={2}>
-                    Total Meter
+                    Total
                   </td>
-                  <td className="p-2 border">{totalIssued}</td>
+                  <td className="p-2 border">
+                    {totalRollsIssued > 0 ? `${totalRollsIssued} Rolls` : "-"}
+                  </td>
+                  <td className="p-2 border">{totalIssued}m</td>
                 </tr>
               </tfoot>
             </table>
@@ -745,6 +967,19 @@ const Input = ({
   </div>
 );
 
+const SearchBar = ({ value, onChange, placeholder }) => (
+  <div className="w-full relative">
+    <input
+      type="text"
+      placeholder={placeholder}
+      className="border border-gray-300 rounded-lg w-full p-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+    <FiSearch className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
+  </div>
+);
+
 const MaterialTable = ({
   title,
   data,
@@ -752,84 +987,148 @@ const MaterialTable = ({
   onSelect,
   selected,
   onMeterChange,
+  onRollsChange,
   formatDate,
-}) => (
-  <div className="mb-10 shadow-xl rounded-2xl bg-white overflow-x-auto">
-    <table className="w-full border text-base md:text-lg lg:text-xl text-center">
-      <thead>
-        <tr className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-white">
-          <th className="p-2 border">Select</th>
-          <th className="p-2 border">Paper Code</th>
-          <th className="p-2 border">Available Meter</th>
-          <th className="p-2 border">Created Date</th>
+}) => {
+  const isRawMaterial = type === "RAW";
 
-          {title.includes("WIP") && <th className="p-2 border">Stage</th>}
-          {(title.includes("WIP") || title.includes("LO")) && (
-            <th className="p-2 border">Source Job</th>
-          )}
+  return (
+    <div className="mb-10 shadow-xl rounded-2xl bg-white overflow-x-auto">
+      <table className="w-full border text-base md:text-lg lg:text-xl text-center">
+        <thead>
+          <tr className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-white">
+            <th className="p-2 border">Select</th>
+            <th className="p-2 border">Paper Code</th>
+            {isRawMaterial && <th className="p-2 border">Rolls</th>}
+            {isRawMaterial && <th className="p-2 border">Running Meter</th>}
+            <th className="p-2 border">Available Meter</th>
+            <th className="p-2 border">Created Date</th>
 
-          <th className="p-2 border">Rack</th>
-          <th className="p-2 border">Issue Meter</th>
-        </tr>
-      </thead>
+            {title.includes("WIP") && <th className="p-2 border">Stage</th>}
+            {(title.includes("WIP") || title.includes("LO")) && (
+              <>
+                <th className="p-2 border">Source Job</th>
+                <th className="p-2 border">Customer Name</th>
+              </>
+            )}
 
-      <tbody className="text-base">
-        {data.length === 0 ? (
-          <tr>
-            <td
-              colSpan={title.includes("WIP") ? 8 : title.includes("LO") ? 7 : 6}
-              className="p-4 text-gray-500"
-            >
-              No materials available
-            </td>
+            {/* <th className="p-2 border">Rack</th> */}
+            {isRawMaterial && <th className="p-2 border">Rolls to Issue</th>}
+            <th className="p-2 border">
+              Issue Meter
+              {isRawMaterial && (
+                <span className="text-xs block">(Auto-calculated)</span>
+              )}
+            </th>
           </tr>
-        ) : (
-          data.map((roll) => {
-            const isChecked = selected.some((s) => s.id === roll.id);
-            const selectedRoll = selected.find((s) => s.id === roll.id);
+        </thead>
 
-            return (
-              <tr key={roll.id}>
-                <td className="p-2 border text-center">
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => onSelect(type, roll)}
-                  />
-                </td>
+        <tbody className="text-base">
+          {data.length === 0 ? (
+            <tr>
+              <td
+                colSpan={
+                  isRawMaterial
+                    ? 9
+                    : title.includes("WIP")
+                    ? 8
+                    : title.includes("LO")
+                    ? 7
+                    : 5
+                }
+                className="p-4 text-gray-500"
+              >
+                No materials available
+              </td>
+            </tr>
+          ) : (
+            data.map((roll) => {
+              const isChecked = selected.some((s) => s.id === roll.id);
+              const selectedRoll = selected.find((s) => s.id === roll.id);
 
-                <td className="p-2 border">{roll.paperCode}</td>
-                <td className="p-2 border">{roll.availableMeter}</td>
-                <td className="p-2 border">{formatDate(roll.createdAt)}</td>
-
-                {title.includes("WIP") && (
-                  <td className="p-2 border capitalize">{roll.stage}</td>
-                )}
-                {(title.includes("WIP") || title.includes("LO")) && (
-                  <td className="p-2 border">
-                    {roll.sourceJobCardNo || "N/A"}
+              return (
+                <tr key={roll.id}>
+                  <td className="p-2 border text-center">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => onSelect(type, roll)}
+                    />
                   </td>
-                )}
 
-                <td className="p-2 border">{roll.rack}</td>
+                  <td className="p-2 border">{roll.paperCode}</td>
 
-                <td className="p-2 border">
-                  <input
-                    type="number"
-                    className="border p-1 rounded w-24"
-                    disabled={!isChecked}
-                    value={selectedRoll?.issuedMeter || ""}
-                    onChange={(e) => onMeterChange(roll.id, e.target.value)}
-                    placeholder="meter"
-                    max={roll.availableMeter}
-                    min="0"
-                  />
-                </td>
-              </tr>
-            );
-          })
-        )}
-      </tbody>
-    </table>
-  </div>
-);
+                  {/* ✅ RAW ONLY: Show Rolls and Running Meter */}
+                  {isRawMaterial && (
+                    <>
+                      <td className="p-2 border font-semibold">
+                        {roll.totalRolls || 0}
+                      </td>
+                      <td className="p-2 border font-semibold">
+                        {roll.runningMeter || 0}m
+                      </td>
+                    </>
+                  )}
+
+                  <td className="p-2 border">{roll.availableMeter}m</td>
+                  <td className="p-2 border">{formatDate(roll.createdAt)}</td>
+
+                  {title.includes("WIP") && (
+                    <td className="p-2 border capitalize">{roll.stage}</td>
+                  )}
+                  {(title.includes("WIP") || title.includes("LO")) && (
+                    <>
+                      <td className="p-2 border">
+                        {roll.sourceJobCardNo || "N/A"}
+                      </td>
+                      <td className="p-2 border">{roll.customerName || "-"}</td>
+                    </>
+                  )}
+
+                  {/* <td className="p-2 border">{roll.rack}</td> */}
+
+                  {/* ✅ RAW ONLY: Rolls to Issue Input */}
+                  {isRawMaterial && (
+                    <td className="p-2 border">
+                      <input
+                        type="number"
+                        className="border p-1 rounded w-20"
+                        disabled={!isChecked}
+                        value={selectedRoll?.issuedRolls || ""}
+                        onChange={(e) => onRollsChange(roll.id, e.target.value)}
+                        placeholder="rolls"
+                        max={roll.totalRolls}
+                        min="0"
+                      />
+                    </td>
+                  )}
+
+                  {/* Issue Meter Input */}
+                  <td className="p-2 border">
+                    <input
+                      type="number"
+                      className={`border p-1 rounded w-24 ${
+                        isRawMaterial ? "bg-gray-100 cursor-not-allowed" : ""
+                      }`}
+                      disabled={!isChecked || isRawMaterial}
+                      value={selectedRoll?.issuedMeter || ""}
+                      onChange={(e) => onMeterChange(roll.id, e.target.value)}
+                      placeholder={isRawMaterial ? "auto" : "meter"}
+                      max={roll.availableMeter}
+                      min="0"
+                      title={
+                        isRawMaterial
+                          ? "Auto-calculated based on rolls"
+                          : "Enter meter manually"
+                      }
+                    />
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+};

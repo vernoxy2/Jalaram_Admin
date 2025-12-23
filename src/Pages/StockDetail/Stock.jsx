@@ -722,11 +722,11 @@ const StockReport = () => {
           <li>
             <strong>Paper Code History Filter:</strong> Select a RAW paper code to see its complete journey - the original RAW material purchase and all LO/WIP materials that were created from it during production.
           </li>
-          <li className="bg-yellow-50 p-2 rounded mt-2">
+          {/* <li className="bg-yellow-50 p-2 rounded mt-2">
             <strong>💡 Formula for LO/WIP:</strong> Used = Created - Waste - LO
             - WIP. This prevents double-counting as material flows through
             stages.
-          </li>
+          </li> */}
         </ul>
       </div>
     </div>
