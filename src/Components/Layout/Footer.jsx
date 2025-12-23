@@ -4,7 +4,7 @@ const Footer = () => {
   return (
     <div >
       <hr className="mt-8" />
-          <p className="text-center pt-4 sm:pt-5 md:pt-6 text-gray-500 text-xs sm:text-sm md:text-base mt-auto">
+          <p className="text-center pt-4 sm:pt-5 md:pt-6 text-gray-500  mt-auto">
             © {new Date().getFullYear()} Developed by @Vernoxy
           </p>
     </div>

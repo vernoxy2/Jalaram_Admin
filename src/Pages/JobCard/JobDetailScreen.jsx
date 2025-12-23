@@ -5,6 +5,7 @@ import { db } from "../../firebase";
 import { format } from "date-fns";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import BackButton from "../../Components/BackButton";
 
 const JobDetailsScreen = () => {
   const { id } = useParams();
@@ -25,10 +26,10 @@ const JobDetailsScreen = () => {
         if (docSnap.exists()) {
           const orderData = { id: docSnap.id, ...docSnap.data() };
           setOrder(orderData);
-          
+
           // Extract allocated materials
           const materials = [];
-          
+
           // Check for main paper product
           if (orderData.paperProductCode) {
             materials.push({
@@ -533,7 +534,10 @@ const JobDetailsScreen = () => {
 
   return (
     <div className="min-h-screen space-y-5 max-w-screen">
-      <h1>Job Details</h1>
+      <div className="flex justify-between items-baseline">
+        <h1>Job Details</h1>
+        <BackButton />
+      </div>
       <hr />
       <div className="rounded-2xl mx-auto bg-gray-100 py-16 px-5">
         {/* Simple View for Screen Display */}
@@ -591,7 +595,9 @@ const JobDetailsScreen = () => {
 
             <div className="border-b pb-3">
               <p className="text-gray-500 text-sm">Job Paper</p>
-              <p className="text-lg font-medium">{safeRender(order.jobPaper)}</p>
+              <p className="text-lg font-medium">
+                {safeRender(order.jobPaper)}
+              </p>
             </div>
 
             {order.jobType !== "Printing" && (
@@ -627,9 +633,7 @@ const JobDetailsScreen = () => {
 
             <div className="border-b pb-3">
               <p className="text-gray-500 text-sm">Around</p>
-              <p className="text-lg font-medium">
-                {safeRender(order.around)}
-              </p>
+              <p className="text-lg font-medium">{safeRender(order.around)}</p>
             </div>
 
             <div className="border-b pb-3">
@@ -646,9 +650,7 @@ const JobDetailsScreen = () => {
 
             <div className="border-b pb-3">
               <p className="text-gray-500 text-sm">Blocks</p>
-              <p className="text-lg font-medium">
-                {safeRender(order.blocks)}
-              </p>
+              <p className="text-lg font-medium">{safeRender(order.blocks)}</p>
             </div>
 
             <div className="border-b pb-3">
@@ -681,13 +683,17 @@ const JobDetailsScreen = () => {
                     >
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <p className="text-xs text-gray-500">Paper Product Code</p>
+                          <p className="text-xs text-gray-500">
+                            Paper Product Code
+                          </p>
                           <p className="text-sm font-medium">
                             {safeRender(material.code)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Paper Product No</p>
+                          <p className="text-xs text-gray-500">
+                            Paper Product No
+                          </p>
                           <p className="text-sm font-medium">
                             {material.number || "-"}
                           </p>

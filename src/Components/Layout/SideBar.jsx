@@ -10,7 +10,7 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
   // const [mobileOpen, setMobileOpen] = useState(false);
 
   const toggleSidebar = () => setIsOpen(!isOpen);
-  const toggleMobileSidebar = () => setMobileOpen(!mobileOpen);
+  // const toggleMobileSidebar = () => setMobileOpen(!mobileOpen);
 
   const location = useLocation();
   const currentPath = "/" + location.pathname.split("/")[1];
@@ -27,7 +27,7 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
 
   return (
     <div className="flex relative">
-      <img src={Right} alt="" className="absolute rotate-180 bottom-0" />
+      <img src={Right} alt="" className="absolute rotate-180 bottom-0 whitespace-nowrap trax-" />
 
       {/* Desktop Sidebar */}
       <div
@@ -50,7 +50,7 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
 
           <button
             onClick={toggleSidebar}
-            className="p-1.5 bg-white rounded-lg hover:bg-white/80 text-black "
+            className="p-1.5 bg-white rounded-lg xl:hover:bg-white/80 active:bg-white/80 text-black "
           >
             {isOpen ? (
               <FaCaretLeft className="text-2xl text-primary" />
@@ -90,7 +90,7 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
 
       {/* Mobile Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-full bg-gradient-to-b from-[#102F5C] to-[#3566AD] text-white pl-8 z-50 transition-transform duration-300 md:hidden ${
+        className={`fixed top-0 left-0 h-full bg-gradient-to-b from-[#102F5C] to-[#3566AD] text-white pl-8 z-50 transition-transform duration-500 md:hidden ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } w-80`}
       >

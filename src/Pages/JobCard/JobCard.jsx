@@ -108,7 +108,7 @@ const JobCard = () => {
   };
 
   return (
-    <div className="space-y-2 md:space-y-4 max-w-full ">
+    <div className="space-y-2 md:space-y-4 ">
       <h1>Job Card</h1>
       <hr className="my-2" />
 
@@ -193,11 +193,9 @@ const JobCard = () => {
         <div className="relative">
           <label className="block mb-2 font-medium">To Date</label>
           <input
-            type="text"
+            label="To Date"
+            type="date"
             value={toDate}
-            placeholder="To Date"
-            onFocus={(e) => (e.target.type = "date")}
-            onBlur={(e) => !e.target.value && (e.target.type = "text")}
             onChange={(e) => {
               const selectedToDate = e.target.value;
 

@@ -19,7 +19,7 @@ const AdminLayout = () => {
         <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
 
         {/* Main Content */}
-        <main className="flex flex-col px-6 py-6 md:pt-10 w-full">
+        <main className="flex flex-col px-6 py-6 md:pt-10 w-full container">
           {/* Page Content */}
           <div className="flex-1">
             <Outlet />

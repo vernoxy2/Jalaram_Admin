@@ -8,7 +8,6 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import moment from "moment";
-// Firestore modular imports - adjust if your project uses a different wrapper
 import {
   getFirestore,
   collection,
@@ -35,45 +34,112 @@ import {
 } from "../../utils/constant";
 import { startTransition } from "react";
 import PrimaryBtn from "../../Components/PrimaryBtn";
-import PrimaryBackBtn from "../../Components/BackButton";
-import { FaChevronLeft } from "react-icons/fa6";
 import BackButton from "../../Components/BackButton";
 import SuccessPopup from "../../Components/SuccessPopup";
 
-const db = getFirestore(getApp()); // assumes firebase app already initialized
+const db = getFirestore(getApp());
 
-const PrimaryInput = ({ type, value, onChange, name, placeholder }) => {
+// Floating Label Input Component
+const FloatingInput = ({
+  type = "text",
+  value,
+  onChange,
+  name,
+  label,
+  readOnly,
+  error,
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const hasValue = value !== "" && value !== null && value !== undefined;
+
   return (
-    <input
-      type={type}
-      value={value}
-      name={name}
-      placeholder={placeholder}
-      onChange={onChange}
-      className="inputStyle"
-    />
+    <div className="relative">
+      <input
+        type={type}
+        value={value}
+        name={name}
+        onChange={onChange}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        readOnly={readOnly}
+        className={`inputStyle peer ${error ? "border-red-500" : ""} ${
+          readOnly ? "bg-gray-50 cursor-not-allowed" : ""
+        }`}
+      />
+      <label
+        className={`absolute left-3 transition-all duration-200 pointer-events-none ${
+          isFocused || hasValue
+            ? "-top-2.5 text-xs text-gray-600 font-medium bg-white px-1 py-0.5 rounded-sm "
+            : "top-1/2 -translate-y-1/2 text-gray-500"
+        }`}
+      >
+        {label}
+      </label>
+      {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+    </div>
+  );
+};
+
+// Floating Label Select Component
+const FloatingSelect = ({
+  value,
+  onChange,
+  name,
+  label,
+  options,
+  error,
+  required = false,
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const hasValue = value !== "" && value !== null && value !== undefined;
+
+  return (
+    <div className="relative">
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        className={`inputStyle peer ${error ? "border-red-500" : ""}`}
+      >
+        <option value=""></option>
+        {options.map((item) => (
+          <option key={item.value} value={item.value}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+      <label
+        className={`absolute left-3 transition-all duration-200 pointer-events-none ${
+          isFocused || hasValue
+            ? "-top-2 text-xs text-gray-800 font-medium bg-white px-1 py-0.5 rounded-sm "
+            : "top-1/2 -translate-y-1/2 text-gray-500"
+        }`}
+      >
+        {label} {required && "*"}
+      </label>
+      {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+    </div>
   );
 };
 
 const AddJob = () => {
   const navigate = useNavigate();
-  const { id } = useParams(); // optional route param /add-job/:id
+  const { id } = useParams();
   const [searchParams] = useSearchParams();
   const isEdit = searchParams.get("edit") === "true" || !!id;
 
-  // message for success/error
-  // const [message, setMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
 
-  // Mirror RN state names
   const [poNo, setPoNo] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [jobCardNo, setJobCardNo] = useState("");
   const [jobName, setJobName] = useState("");
   const [jobDate, setJobDate] = useState(() => new Date());
-  // const [jobSize, setJobSize] = useState("");
   const [jobLength, setJobLength] = useState("");
   const [jobWidth, setJobWidth] = useState("");
+  const [paperSize, setPaperSize] = useState("");
   const [totalPaperRequired, setTotalPaperRequired] = useState("");
   const [jobQty, setJobQty] = useState("");
   const [jobPaper, setJobPaper] = useState("");
@@ -88,6 +154,7 @@ const AddJob = () => {
   const [acrossGap, setAcrossGap] = useState("");
   const [aroundGap, setAroundGap] = useState("");
   const [errors, setErrors] = useState({});
+  const [calculationSize, setCalculationSize] = useState("");
 
   const fetchOrderDetails = useCallback(async (docId) => {
     try {
@@ -101,16 +168,16 @@ const AddJob = () => {
         setJobCardNo(data.jobCardNo || "");
         setJobName(data.jobName || "");
         setJobDate(data.jobDate ? data.jobDate.toDate() : new Date());
-        // setJobSize(data.jobSize || "");
         setJobLength(data.jobLength || "");
         setJobWidth(data.jobWidth || "");
+        setPaperSize(data.paperSize || "");
         setTotalPaperRequired(data.totalPaperRequired || "");
         setJobQty(data.jobQty || "");
         setAcrossGap(data.acrossGap || "");
         setAroundGap(data.aroundGap || "");
         setAccept(data.accept || false);
+        setCalculationSize(data.calculationSize || "");
 
-        // ⭐ FIX: extract `.value` from objects
         setJobPaper(data.jobPaper?.value || "");
         setPlateSize(data.printingPlateSize?.value || "");
         setUpsAcrossValue(data.upsAcross?.value || "");
@@ -118,8 +185,6 @@ const AddJob = () => {
         setTeethSizeValue(data.teethSize?.value || "");
         setBlocksValue(data.blocks?.value || "");
         setWindingDirectionValue(data.windingDirection?.value || "");
-
-        // Label Type (simple string)
         setSelectedLabelType(data.jobType || "");
       });
     } catch (err) {
@@ -131,9 +196,8 @@ const AddJob = () => {
     try {
       const monthPrefix = moment().format("MMM");
       const yearSuffix = moment().format("YY");
-      const prefix = `${monthPrefix}.${yearSuffix}`; // e.g. Nov.25
+      const prefix = `${monthPrefix}.${yearSuffix}`;
 
-      // Query ordersTest where jobCardNo starts with prefix
       const q = query(
         collection(db, "ordersTest"),
         where("jobCardNo", ">=", `${prefix}-`),
@@ -162,10 +226,6 @@ const AddJob = () => {
       console.error("Error generating job card:", err);
     }
   }, []);
-  useEffect(() => {
-    console.log(isEdit);
-    console.log(id);
-  }, []);
 
   useEffect(() => {
     const run = async () => {
@@ -181,57 +241,46 @@ const AddJob = () => {
     run();
   }, [isEdit, id]);
 
-  // ✅ ADD THESE HANDLERS (after your state declarations, around line 180)
+  const calculateTotalPaper = useCallback((qty, size, ups, gap) => {
+    const totalLabels = parseFloat(qty);
+    const labelSize = parseFloat(size);
+    const across = parseFloat(ups);
+    const aroundGapValue = parseFloat(gap);
 
-  const handleJobLengthChange = (e) => {
-    const newLength = e.target.value;
-    setJobLength(newLength);
-
-    // Auto-calculate if all values are present
-    if (newLength && jobWidth && jobQty) {
-      const length = parseFloat(newLength);
-      const width = parseFloat(jobWidth);
-      const qty = parseInt(jobQty, 10);
-
-      if (!isNaN(length) && !isNaN(width) && !isNaN(qty)) {
-        const total = length * width * qty;
-        setTotalPaperRequired(total.toFixed(2));
-      }
+    if (
+      !isNaN(totalLabels) &&
+      !isNaN(labelSize) &&
+      !isNaN(across) &&
+      !isNaN(aroundGapValue)
+    ) {
+      const total =
+        ((labelSize + aroundGapValue) * totalLabels) / (1000 * across);
+      setTotalPaperRequired(total.toFixed(2));
     }
-  };
-
-  const handleJobWidthChange = (e) => {
-    const newWidth = e.target.value;
-    setJobWidth(newWidth);
-
-    // Auto-calculate if all values are present
-    if (jobLength && newWidth && jobQty) {
-      const length = parseFloat(jobLength);
-      const width = parseFloat(newWidth);
-      const qty = parseInt(jobQty, 10);
-
-      if (!isNaN(length) && !isNaN(width) && !isNaN(qty)) {
-        const total = length * width * qty;
-        setTotalPaperRequired(total.toFixed(2));
-      }
-    }
-  };
+  }, []);
 
   const handleJobQtyChange = (e) => {
-    const newQty = e.target.value;
-    setJobQty(newQty);
+    const value = e.target.value;
+    setJobQty(value);
+    calculateTotalPaper(value, calculationSize, upsAcrossValue, aroundGap);
+  };
 
-    // Auto-calculate if all values are present
-    if (jobLength && jobWidth && newQty) {
-      const length = parseFloat(jobLength);
-      const width = parseFloat(jobWidth);
-      const qty = parseInt(newQty, 10);
+  const handleCalculationSizeChange = (e) => {
+    const value = e.target.value;
+    setCalculationSize(value);
+    calculateTotalPaper(jobQty, value, upsAcrossValue, aroundGap);
+  };
 
-      if (!isNaN(length) && !isNaN(width) && !isNaN(qty)) {
-        const total = length * width * qty;
-        setTotalPaperRequired(total.toFixed(2));
-      }
-    }
+  const handleUpsAcrossChange = (e) => {
+    const value = e.target.value;
+    setUpsAcrossValue(value);
+    calculateTotalPaper(jobQty, calculationSize, value, aroundGap);
+  };
+
+  const handleAroundGapChange = (e) => {
+    const value = e.target.value;
+    setAroundGap(value);
+    calculateTotalPaper(jobQty, calculationSize, upsAcrossValue, value);
   };
 
   const findOption = (list, value) => {
@@ -262,21 +311,21 @@ const AddJob = () => {
         alert("Please select a valid Label Type (printing/plain)");
         return;
       }
+
       const orderData = {
         poNo,
         jobDate: Timestamp.fromDate(new Date(jobDate)),
         customerName,
         jobCardNo,
         jobName,
-        // jobSize,
-        jobLength, // ✅ Add
-        jobWidth, // ✅ Add
+        jobLength,
+        jobWidth,
+        paperSize,
         jobQty,
-        totalPaperRequired, // ✅ Add
+        calculationSize,
+        totalPaperRequired,
         jobType: selectedLabelType,
         assignedTo: assignedUserUID,
-
-        // 🔥 Convert SELECT VALUE → { label, value }
         jobPaper: findOption(materialTypeList, jobPaper),
         printingPlateSize: findOption(printingPlateSize, plateSize),
         upsAcross: findOption(upsAcross, upsAcrossValue),
@@ -284,38 +333,36 @@ const AddJob = () => {
         teethSize: findOption(teethSize, teethSizeValue),
         blocks: findOption(blocks, blocksValue),
         windingDirection: findOption(windingDirection, windingDirectionValue),
-
-        // printingColors,
         accept,
         acrossGap,
         aroundGap,
-        materialAllotStatus: "Pending", // ✅ Add
-        materialAllocations: [], // ✅ Add
+        materialAllotStatus: "Pending",
+        materialAllocations: [],
         updatedAt: serverTimestamp(),
       };
 
-      // ✅ Material Request Data
       const materialRequestData = {
         jobCardNo,
         jobName,
         jobLength,
         jobWidth,
+        paperSize,
         jobPaper: findOption(materialTypeList, jobPaper),
         jobQty,
+        calculationSize,
         totalPaperRequired,
         requiredMaterial: totalPaperRequired,
         requestStatus: "Pending",
         requestType: "Initial",
         createdAt: serverTimestamp(),
         createdBy: "Admin",
+        customerName,
       };
 
       if (isEdit && id) {
-        // Update existing order
         const docRef = doc(db, "ordersTest", id);
         await updateDoc(docRef, orderData);
 
-        // ✅ Update or create material request
         const q = query(
           collection(db, "materialRequest"),
           where("jobCardNo", "==", jobCardNo),
@@ -324,21 +371,17 @@ const AddJob = () => {
         const materialRequestSnapshot = await getDocs(q);
 
         if (!materialRequestSnapshot.empty) {
-          // Update existing material request
           const materialDocId = materialRequestSnapshot.docs[0].id;
           await updateDoc(doc(db, "materialRequest", materialDocId), {
             ...materialRequestData,
             updatedAt: serverTimestamp(),
           });
         } else {
-          // Create new material request
           await addDoc(collection(db, "materialRequest"), materialRequestData);
         }
 
         setShowPopup(true);
-        // setMessage("Job updated successfully");
       } else {
-        // Check duplicate jobCardNo
         const q = query(
           collection(db, "ordersTest"),
           where("jobCardNo", "==", jobCardNo)
@@ -349,7 +392,6 @@ const AddJob = () => {
           return;
         }
 
-        // ✅ Create new order and get reference
         const orderRef = await addDoc(collection(db, "ordersTest"), {
           ...orderData,
           jobStatus,
@@ -357,43 +399,14 @@ const AddJob = () => {
           createdBy: "Admin",
         });
 
-        // ✅ Add material request with orderId
         await addDoc(collection(db, "materialRequest"), {
           ...materialRequestData,
           orderId: orderRef.id,
         });
 
         setShowPopup(true);
-        // setMessage("Job created successfully");
       }
 
-      // if (isEdit && id) {
-      //   // update existing doc (keep jobStatus if you want — here we don't overwrite)
-      //   const docRef = doc(db, "ordersTest", id);
-      //   await updateDoc(docRef, orderData);
-      //   setMessage("Job updated successfully");
-      // } else {
-      //   // check duplicate jobCardNo
-      //   const q = query(
-      //     collection(db, "ordersTest"),
-      //     where("jobCardNo", "==", jobCardNo)
-      //   );
-      //   const existing = await getDocs(q);
-      //   if (!existing.empty) {
-      //     alert("Duplicate Job Card No. Please regenerate.");
-      //     return;
-      //   }
-
-      //   await addDoc(collection(db, "ordersTest"), {
-      //     ...orderData,
-      //     jobStatus,
-      //     createdAt: serverTimestamp(),
-      //     createdBy: "Admin",
-      //   });
-      //   setMessage("Job created successfully");
-      // }
-
-      // navigate back a bit after a short feedback
       setTimeout(() => navigate(-1), 1200);
     } catch (error) {
       console.error("Submit Error:", error);
@@ -401,7 +414,6 @@ const AddJob = () => {
     }
   };
 
-  // helper for controlled date input: HTML date value "YYYY-MM-DD"
   const dateInputValue = (d) => {
     try {
       const jsDate = new Date(d);
@@ -413,25 +425,23 @@ const AddJob = () => {
     }
   };
 
-  /* ---------------------------------------------------
-   VALIDATE FORM
---------------------------------------------------- */
   const validateForm = () => {
     const newErrors = {};
 
-    // Required fields
     if (!poNo.trim()) newErrors.poNo = "PO No is required";
     if (!jobName.trim()) newErrors.jobName = "Job Name is required";
     if (!jobCardNo.trim()) newErrors.jobCardNo = "Job Card No is required";
     if (!customerName.trim())
       newErrors.customerName = "Customer Name is required";
-
     if (!jobLength) newErrors.jobLength = "Job Length is required";
     if (!jobWidth) newErrors.jobWidth = "Job Width is required";
+    if (!paperSize) newErrors.paperSize = "Paper Size is required";
     if (!jobQty) newErrors.jobQty = "Job Quantity is required";
+    if (!calculationSize) newErrors.calculationSize = "Label size is required";
+    if (!upsAcrossValue) newErrors.upsAcrossValue = "Across Ups is required";
+    if (!aroundGap) newErrors.aroundGap = "Around Gap is required";
     if (!totalPaperRequired)
       newErrors.totalPaperRequired = "Total Paper Required is required";
-
     if (!selectedLabelType)
       newErrors.selectedLabelType = "Label Type is required";
 
@@ -451,346 +461,262 @@ const AddJob = () => {
         <div className="py-16 mt-10 space-y-10 bg-gray-100 container rounded-2xl">
           <form
             onSubmit={handleSubmit}
-            className="grid md:grid-cols-2 gap-8 w-full "
+            className="grid md:grid-cols-2 gap-8 w-full"
           >
             {/* PO No */}
-            {/* <PrimaryInput
-            type={"text"}
-            name="poNo"
-            placeholder="PO No"
-            value={poNo}
-            onChange={(e) => setPoNo(e.target.value)}
-          /> */}
-            <div>
-              {/* <label className="font-medium">
-              PO No <span className="text-red-500">*</span>
-            </label> */}
-
-              <PrimaryInput
-                type="text"
-                name="poNo"
-                placeholder="PO No"
-                value={poNo}
-                onChange={(e) => {
-                  setPoNo(e.target.value);
-                  setErrors((prev) => ({ ...prev, poNo: "" })); // 🔥 remove error on type
-                }}
-              />
-
-              {errors.poNo && (
-                <p className="text-red-600 text-sm">{errors.poNo}</p>
-              )}
-            </div>
+            <FloatingInput
+              type="text"
+              name="poNo"
+              label="PO No *"
+              value={poNo}
+              onChange={(e) => {
+                setPoNo(e.target.value);
+                setErrors((prev) => ({ ...prev, poNo: "" }));
+              }}
+              error={errors.poNo}
+            />
 
             {/* Date */}
-            <PrimaryInput
-              type={"date"}
+            <FloatingInput
+              type="date"
               name="jobDate"
-              placeholder="Job Date"
+              label="Job Date"
               value={dateInputValue(jobDate)}
               onChange={(e) => setJobDate(new Date(e.target.value))}
             />
 
             {/* Job Name */}
-            <div>
-              <PrimaryInput
-                type="text"
-                name="jobName"
-                placeholder="Job Name"
-                value={jobName}
-                onChange={(e) => {
-                  setJobName(e.target.value);
-                  setErrors((prev) => ({ ...prev, jobName: "" }));
-                }}
-              />
-
-              {errors.jobName && (
-                <p className="text-red-600 text-sm">{errors.jobName}</p>
-              )}
-            </div>
+            <FloatingInput
+              type="text"
+              name="jobName"
+              label="Job Name *"
+              value={jobName}
+              onChange={(e) => {
+                setJobName(e.target.value);
+                setErrors((prev) => ({ ...prev, jobName: "" }));
+              }}
+              error={errors.jobName}
+            />
 
             {/* Job Card No */}
-            <div>
-              <PrimaryInput
-                type={"text"}
-                name="jobCardNo"
-                placeholder="Job Card No"
-                value={jobCardNo}
-                onChange={(e) => {
-                  setJobCardNo(e.target.value);
-                  setErrors((prev) => ({ ...prev, jobCardNo: "" }));
-                }}
-              />
-              {errors.jobCardNo && (
-                <p className="text-red-600 text-sm">{errors.jobCardNo}</p>
-              )}
-            </div>
-            {/* Customer Name */}
-            <div>
-              <PrimaryInput
-                type={"text"}
-                name="customerName"
-                placeholder="Customer Name"
-                value={customerName}
-                onChange={(e) => {
-                  setCustomerName(e.target.value);
-                  setErrors((prev) => ({ ...prev, customerName: "" }));
-                }}
-              />
-              {errors.customerName && (
-                <p className="text-red-600 text-sm">{errors.customerName}</p>
-              )}
-            </div>
-            {/* Job Original Size */}
-            {/* <PrimaryInput
-            type={"text"}
-            name="jobSize"
-            placeholder="Job Original Size"
-            value={jobSize}
-            onChange={(e) => setJobSize(e.target.value)}
-          /> */}
-            {/* Job Length */}
-            <div>
-              <PrimaryInput
-                type={"number"}
-                name="jobLength"
-                placeholder="Job Length"
-                value={jobLength}
-                onChange={(e) => {
-                  handleJobLengthChange(e);
-                  setErrors((prev) => ({ ...prev, jobLength: "" }));
-                }}
-              />
-              {errors.jobLength && (
-                <p className="text-red-600 text-sm">{errors.jobLength}</p>
-              )}
-            </div>
-            <div>
-              {/* Job Width */}
-              <PrimaryInput
-                type={"number"}
-                name="jobWidth"
-                placeholder="Job Width"
-                value={jobWidth}
-                onChange={(e) => {
-                  handleJobWidthChange(e);
-                  setErrors((prev) => ({ ...prev, jobWidth: "" }));
-                }}
-              />
-              {errors.jobWidth && (
-                <p className="text-red-600 text-sm">{errors.jobWidth}</p>
-              )}
-            </div>
-            {/* Job Qty */}
-            <div>
-              <PrimaryInput
-                type={"number"}
-                name="jobQty"
-                placeholder="Job Qty"
-                value={jobQty}
-                onChange={(e) => {
-                  handleJobQtyChange(e);
-                  setErrors((prev) => ({ ...prev, jobQty: "" }));
-                }}
-              />
+            <FloatingInput
+              type="text"
+              name="jobCardNo"
+              label="Job Card No *"
+              value={jobCardNo}
+              onChange={(e) => {
+                setJobCardNo(e.target.value);
+                setErrors((prev) => ({ ...prev, jobCardNo: "" }));
+              }}
+              error={errors.jobCardNo}
+            />
 
-              {errors.jobQty && (
-                <p className="text-red-600 text-sm">{errors.jobQty}</p>
-              )}
-            </div>
-            {/* Total Paper Required - can be manually edited */}
-            <div>
-              <PrimaryInput
-                type={"text"}
-                name="totalPaperRequired"
-                placeholder="Total Paper Required"
-                value={totalPaperRequired}
-                onChange={(e) => {
-                  setTotalPaperRequired(e.target.value);
-                  setErrors((prev) => ({ ...prev, totalPaperRequired: "" }));
-                }}
-              />
-              {errors.totalPaperRequired && (
-                <p className="text-red-600 text-sm">
-                  {errors.totalPaperRequired}
-                </p>
-              )}
-            </div>
+            {/* Customer Name */}
+            <FloatingInput
+              type="text"
+              name="customerName"
+              label="Customer Name *"
+              value={customerName}
+              onChange={(e) => {
+                setCustomerName(e.target.value);
+                setErrors((prev) => ({ ...prev, customerName: "" }));
+              }}
+              error={errors.customerName}
+            />
+
+            {/* Job Length */}
+            <FloatingInput
+              type="number"
+              name="jobLength"
+              label="Job Length *"
+              value={jobLength}
+              onChange={(e) => {
+                setJobLength(e.target.value);
+                setErrors((prev) => ({ ...prev, jobLength: "" }));
+              }}
+              error={errors.jobLength}
+            />
+
+            {/* Job Width */}
+            <FloatingInput
+              type="number"
+              name="jobWidth"
+              label="Job Width *"
+              value={jobWidth}
+              onChange={(e) => {
+                setJobWidth(e.target.value);
+                setErrors((prev) => ({ ...prev, jobWidth: "" }));
+              }}
+              error={errors.jobWidth}
+            />
+
+            {/* Paper Size */}
+            <FloatingInput
+              type="number"
+              name="paperSize"
+              label="Paper Size *"
+              value={paperSize}
+              onChange={(e) => {
+                setPaperSize(e.target.value);
+                setErrors((prev) => ({ ...prev, paperSize: "" }));
+              }}
+              error={errors.paperSize}
+            />
+
+            {/* Job Qty */}
+            <FloatingInput
+              type="number"
+              name="jobQty"
+              label="Job Qty *"
+              value={jobQty}
+              onChange={(e) => {
+                handleJobQtyChange(e);
+                setErrors((prev) => ({ ...prev, jobQty: "" }));
+              }}
+              error={errors.jobQty}
+            />
 
             {/* Job Paper / Film Material */}
-            {/* <label className="font-medium">Job Paper / File Material:</label> */}
-            <select
+            <FloatingSelect
               name="jobPaper"
+              label="Job Paper/Film Material"
               value={jobPaper}
               onChange={(e) => setJobPaper(e.target.value)}
-              className="inputStyle"
-            >
-              <option disabled value="" className="text-[#848282]">
-                Job Paper/Film Material:
-              </option>
-              {materialTypeList.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              options={materialTypeList}
+            />
 
             {/* Printing Plate Size */}
-            {/* <label className="font-medium">Printing Plate Size:</label> */}
-            <select
+            <FloatingSelect
               name="plateSize"
+              label="Printing Plate Size"
               value={plateSize}
               onChange={(e) => setPlateSize(e.target.value)}
-              className="inputStyle"
-            >
-              <option value="">Select Printing Plate Size</option>
-              {printingPlateSize.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              options={printingPlateSize}
+            />
+
+            {/* Label Size (for calculation) */}
+            <FloatingInput
+              type="number"
+              name="calculationSize"
+              label="Label Size (for calculation) *"
+              value={calculationSize}
+              onChange={(e) => {
+                handleCalculationSizeChange(e);
+                setErrors((prev) => ({ ...prev, calculationSize: "" }));
+              }}
+              error={errors.calculationSize}
+            />
 
             {/* Across Ups */}
-            {/* <label className="font-medium">Across Ups:</label> */}
-            <select
+            <FloatingSelect
               name="upsAcross"
+              label="Across Ups"
               value={upsAcrossValue}
-              onChange={(e) => setUpsAcrossValue(e.target.value)}
-              className="inputStyle"
-            >
-              <option value="">Select Across Ups</option>
-              {upsAcross.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              onChange={(e) => {
+                handleUpsAcrossChange(e);
+                setErrors((prev) => ({ ...prev, upsAcrossValue: "" }));
+              }}
+              options={upsAcross}
+              error={errors.upsAcrossValue}
+              required
+            />
 
             {/* Across Gap */}
-            <PrimaryInput
-              type={"number"}
+            <FloatingInput
+              type="number"
               name="acrossGap"
-              placeholder="Across Gap"
+              label="Across Gap"
               value={acrossGap}
               onChange={(e) => setAcrossGap(e.target.value)}
             />
-            {/* <label className="font-medium">Across Gap:</label> */}
 
             {/* Around */}
-            {/* <label className="font-medium">Around:</label> */}
-            <select
+            <FloatingSelect
               name="around"
+              label="Around"
               value={aroundValue}
               onChange={(e) => setAroundValue(e.target.value)}
-              className="inputStyle"
-            >
-              <option value="">Select Around</option>
-              {around.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              options={around}
+            />
 
             {/* Around Gap */}
-            <PrimaryInput
-              type={"number"}
+            <FloatingInput
+              type="number"
               name="aroundGap"
-              placeholder="Around Gap"
+              label="Around Gap *"
               value={aroundGap}
-              onChange={(e) => setAroundGap(e.target.value)}
+              onChange={(e) => {
+                handleAroundGapChange(e);
+                setErrors((prev) => ({ ...prev, aroundGap: "" }));
+              }}
+              error={errors.aroundGap}
             />
-            {/* <label className="font-medium">Around Gap:</label> */}
+
+            {/* Total Paper Required */}
+            <FloatingInput
+              type="text"
+              name="totalPaperRequired"
+              label="Total Paper Required"
+              value={totalPaperRequired}
+              onChange={(e) => {
+                setTotalPaperRequired(e.target.value);
+                setErrors((prev) => ({ ...prev, totalPaperRequired: "" }));
+              }}
+              readOnly={true}
+              error={errors.totalPaperRequired}
+            />
 
             {/* Teeth Size */}
-            {/* <label className="font-medium">Teeth Size:</label> */}
-            <select
+            <FloatingSelect
               name="teethSize"
+              label="Teeth Size"
               value={teethSizeValue}
               onChange={(e) => setTeethSizeValue(e.target.value)}
-              className="inputStyle"
-            >
-              <option value="">Select Teeth Size</option>
-              {teethSize.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              options={teethSize}
+            />
 
             {/* Blocks */}
-            {/* <label className="font-medium">Blocks:</label> */}
-            <select
+            <FloatingSelect
               name="blocks"
+              label="Blocks"
               value={blocksValue}
               onChange={(e) => setBlocksValue(e.target.value)}
-              className="inputStyle"
-            >
-              <option value="">Select Blocks</option>
-              {blocks.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              options={blocks}
+            />
 
             {/* Winding Direction */}
-            {/* <label className="font-medium">Winding Direction:</label> */}
-            <select
+            <FloatingSelect
               name="windingDirection"
+              label="Winding Direction"
               value={windingDirectionValue}
               onChange={(e) => setWindingDirectionValue(e.target.value)}
-              className="inputStyle"
-            >
-              <option value="">Select Winding Direction</option>
-              {windingDirection.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              options={windingDirection}
+            />
 
             {/* Label Type */}
-            {/* <label className="font-medium">Label Type:</label> */}
-            <div>
-              <select
-                name="labelType"
-                value={selectedLabelType}
-                onChange={(e) => {
-                  setSelectedLabelType(e.target.value);
-                  setErrors((prev) => ({ ...prev, selectedLabelType: "" }));
-                }}
-                className="inputStyle"
-              >
-                <option value="">Select Label type</option>
-                {labelType.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-              {errors.selectedLabelType && (
-                <p className="text-red-600 text-sm">
-                  {errors.selectedLabelType}
-                </p>
-              )}
-            </div>
+            <FloatingSelect
+              name="labelType"
+              label="Label Type"
+              value={selectedLabelType}
+              onChange={(e) => {
+                setSelectedLabelType(e.target.value);
+                setErrors((prev) => ({ ...prev, selectedLabelType: "" }));
+              }}
+              options={labelType}
+              error={errors.selectedLabelType}
+              required
+            />
           </form>
+
           <PrimaryBtn
             onClick={handleSubmit}
-            className=" w-full mx-auto md:col-span-2"
+            className="w-full mx-auto md:col-span-2"
           >
             Submit
           </PrimaryBtn>
-
-          {/* {message && (
-            <div className="mt-4 text-green-600 font-bold text-lg">
-              {message}
-            </div>
-          )} */}
         </div>
       </div>
+
       {showPopup && (
         <SuccessPopup
           message={
