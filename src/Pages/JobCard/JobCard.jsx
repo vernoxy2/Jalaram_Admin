@@ -158,8 +158,6 @@ const JobCard = () => {
           setCurrentPage(1);
         }}
       />
-      
-
 
       {/* Buttons */}
       {/* Date Filter Buttons */}
@@ -235,11 +233,21 @@ const JobCard = () => {
         <table className="table-auto  rounded-xl">
           <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-base xl:text-xl px-3 text-white">
             <tr className="">
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Job Card No</th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Job Name</th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Customer Name</th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Date</th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Status</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Job Card No
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Job Name
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Customer Name
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Date
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Status
+              </th>
               <th className="px-2 md:px-4 py-2 whitespace-nowrap">Action</th>
             </tr>
           </thead>
@@ -291,8 +299,8 @@ const JobCard = () => {
 
             {jobs.length === 0 && (
               <tr>
-                <td colSpan="6" className="text-center py-4">
-                  No jobs found.
+                <td colSpan="6" className="text-center p-8 text-gray-500">
+                  <div className="font-medium"> No jobs found.</div>
                 </td>
               </tr>
             )}
@@ -332,7 +340,6 @@ const JobCard = () => {
       <main className="px-6 py-10 pr-24 w-full ">
         <Outlet /> {/* This renders nested route components */}
       </main>
-      
     </div>
   );
 };

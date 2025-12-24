@@ -35,7 +35,7 @@ import {
 } from "../../utils/constant";
 import { startTransition } from "react";
 import PrimaryBtn from "../../Components/PrimaryBtn";
-import PrimaryBackBtn from "../../Components/BackButton";
+import PrimaryBackBtn from "../../Components/PrimaryBtn";
 import { FaChevronLeft } from "react-icons/fa6";
 import BackButton from "../../Components/BackButton";
 import SuccessPopup from "../../Components/SuccessPopup";
@@ -70,7 +70,6 @@ const AddJob = () => {
   const isEdit = searchParams.get("edit") === "true" || !!id;
 
   // message for success/error
-  // const [message, setMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
 
   // Mirror RN state names
@@ -79,10 +78,9 @@ const AddJob = () => {
   const [jobCardNo, setJobCardNo] = useState("");
   const [jobName, setJobName] = useState("");
   const [jobDate, setJobDate] = useState(() => new Date());
-  // const [jobSize, setJobSize] = useState("");
   const [jobLength, setJobLength] = useState("");
   const [jobWidth, setJobWidth] = useState("");
-  const [paperSize, setPaperSize] = useState(""); // ✅ NEW FIELD
+  const [paperSize, setPaperSize] = useState("");
   const [totalPaperRequired, setTotalPaperRequired] = useState("");
   const [jobQty, setJobQty] = useState("");
   const [jobPaper, setJobPaper] = useState("");
@@ -99,6 +97,11 @@ const AddJob = () => {
   const [errors, setErrors] = useState({});
   const [calculationSize, setCalculationSize] = useState("");
 
+  // ✅ NEW: Autocomplete states
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
   const fetchOrderDetails = useCallback(async (docId) => {
     try {
       const snap = await getDoc(doc(db, "ordersTest", docId));
@@ -111,10 +114,9 @@ const AddJob = () => {
         setJobCardNo(data.jobCardNo || "");
         setJobName(data.jobName || "");
         setJobDate(data.jobDate ? data.jobDate.toDate() : new Date());
-        // setJobSize(data.jobSize || "");
         setJobLength(data.jobLength || "");
         setJobWidth(data.jobWidth || "");
-        setPaperSize(data.paperSize || ""); // ✅ NEW FIELD
+        setPaperSize(data.paperSize || "");
         setTotalPaperRequired(data.totalPaperRequired || "");
         setJobQty(data.jobQty || "");
         setAcrossGap(data.acrossGap || "");
@@ -122,7 +124,7 @@ const AddJob = () => {
         setAccept(data.accept || false);
         setCalculationSize(data.calculationSize || "");
 
-        // ⭐ FIX: extract `.value` from objects
+        // Extract `.value` from objects
         setJobPaper(data.jobPaper?.value || "");
         setPlateSize(data.printingPlateSize?.value || "");
         setUpsAcrossValue(data.upsAcross?.value || "");
@@ -175,6 +177,91 @@ const AddJob = () => {
     }
   }, []);
 
+  // ✅ NEW: Search job names function
+  const searchJobNames = useCallback(async (text) => {
+    if (!text || text.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      // Get all documents and filter client-side for case-insensitive search
+      // Note: For large datasets, consider using Algolia or creating a searchable field
+      const snapshot = await getDocs(collection(db, "ordersTest"));
+
+      const results = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter(
+          (doc) =>
+            doc.jobName &&
+            doc.jobName.toLowerCase().includes(text.toLowerCase())
+        )
+        .slice(0, 10);
+
+      setSearchResults(results);
+      setShowSuggestions(true);
+    } catch (error) {
+      console.error("Error searching job names:", error);
+    }
+  }, []);
+
+  // ✅ NEW: Handle job selection from autocomplete
+  const handleSelectJob = useCallback((item) => {
+    setSelectedJob(item);
+    setJobName(item.jobName);
+    setSearchResults([]);
+    setShowSuggestions(false);
+
+    // Auto-fill other fields (except jobCardNo)
+    startTransition(() => {
+      setPoNo(item.poNo || "");
+      setCustomerName(item.customerName || "");
+      setJobLength(item.jobLength || "");
+      setJobWidth(item.jobWidth || "");
+      setPaperSize(item.paperSize || "");
+      setJobQty(item.jobQty || "");
+      setCalculationSize(item.calculationSize || "");
+      setTotalPaperRequired(item.totalPaperRequired || "");
+      setAcrossGap(item.acrossGap || "");
+      setAroundGap(item.aroundGap || "");
+      setAccept(item.accept || false);
+
+      // Extract values from objects
+      setJobPaper(item.jobPaper?.value || "");
+      setPlateSize(item.printingPlateSize?.value || "");
+      setUpsAcrossValue(item.upsAcross?.value || "");
+      setAroundValue(item.around?.value || "");
+      setTeethSizeValue(item.teethSize?.value || "");
+      setBlocksValue(item.blocks?.value || "");
+      setWindingDirectionValue(item.windingDirection?.value || "");
+      setSelectedLabelType(item.jobType || "");
+    });
+  }, []);
+
+  // ✅ NEW: Clear auto-filled data
+  const clearAutoFilledData = useCallback(() => {
+    startTransition(() => {
+      setCustomerName("");
+      setJobLength("");
+      setJobWidth("");
+      setPaperSize("");
+      setJobQty("");
+      setCalculationSize("");
+      setTotalPaperRequired("");
+      setAcrossGap("");
+      setAroundGap("");
+      setJobPaper("");
+      setPlateSize("");
+      setUpsAcrossValue("");
+      setAroundValue("");
+      setTeethSizeValue("");
+      setBlocksValue("");
+      setWindingDirectionValue("");
+      setSelectedLabelType("");
+      setPoNo("");
+    });
+  }, []);
+
   useEffect(() => {
     console.log(isEdit);
     console.log(id);
@@ -194,7 +281,7 @@ const AddJob = () => {
     run();
   }, [isEdit, id]);
 
-  // ✅ UPDATED FORMULA: totalPaperRequired = ((labelSize + aroundGap)*totalLabels)/(1000*across)
+  // Calculate total paper required
   const calculateTotalPaper = useCallback((qty, size, ups, gap) => {
     const totalLabels = parseFloat(qty);
     const labelSize = parseFloat(size);
@@ -231,7 +318,6 @@ const AddJob = () => {
     calculateTotalPaper(jobQty, calculationSize, value, aroundGap);
   };
 
-  // ✅ NEW HANDLER for aroundGap
   const handleAroundGapChange = (e) => {
     const value = e.target.value;
     setAroundGap(value);
@@ -272,17 +358,16 @@ const AddJob = () => {
         customerName,
         jobCardNo,
         jobName,
-        // jobSize,
         jobLength,
         jobWidth,
-        paperSize, // ✅ NEW FIELD
+        paperSize,
         jobQty,
         calculationSize,
         totalPaperRequired,
         jobType: selectedLabelType,
         assignedTo: assignedUserUID,
 
-        // 🔥 Convert SELECT VALUE → { label, value }
+        // Convert SELECT VALUE → { label, value }
         jobPaper: findOption(materialTypeList, jobPaper),
         printingPlateSize: findOption(printingPlateSize, plateSize),
         upsAcross: findOption(upsAcross, upsAcrossValue),
@@ -291,7 +376,6 @@ const AddJob = () => {
         blocks: findOption(blocks, blocksValue),
         windingDirection: findOption(windingDirection, windingDirectionValue),
 
-        // printingColors,
         accept,
         acrossGap,
         aroundGap,
@@ -300,13 +384,13 @@ const AddJob = () => {
         updatedAt: serverTimestamp(),
       };
 
-      // ✅ Material Request Data
+      // Material Request Data
       const materialRequestData = {
         jobCardNo,
         jobName,
         jobLength,
         jobWidth,
-        paperSize, // ✅ NEW FIELD
+        paperSize,
         jobPaper: findOption(materialTypeList, jobPaper),
         jobQty,
         calculationSize,
@@ -324,7 +408,7 @@ const AddJob = () => {
         const docRef = doc(db, "ordersTest", id);
         await updateDoc(docRef, orderData);
 
-        // ✅ Update or create material request
+        // Update or create material request
         const q = query(
           collection(db, "materialRequest"),
           where("jobCardNo", "==", jobCardNo),
@@ -357,7 +441,7 @@ const AddJob = () => {
           return;
         }
 
-        // ✅ Create new order and get reference
+        // Create new order and get reference
         const orderRef = await addDoc(collection(db, "ordersTest"), {
           ...orderData,
           jobStatus,
@@ -365,7 +449,7 @@ const AddJob = () => {
           createdBy: "Admin",
         });
 
-        // ✅ Add material request with orderId
+        // Add material request with orderId
         await addDoc(collection(db, "materialRequest"), {
           ...materialRequestData,
           orderId: orderRef.id,
@@ -394,9 +478,6 @@ const AddJob = () => {
     }
   };
 
-  /* ---------------------------------------------------
-   VALIDATE FORM
---------------------------------------------------- */
   const validateForm = () => {
     const newErrors = {};
 
@@ -409,11 +490,11 @@ const AddJob = () => {
 
     if (!jobLength) newErrors.jobLength = "Job Length is required";
     if (!jobWidth) newErrors.jobWidth = "Job Width is required";
-    if (!paperSize) newErrors.paperSize = "Paper Size is required"; // ✅ NEW VALIDATION
+    if (!paperSize) newErrors.paperSize = "Paper Size is required";
     if (!jobQty) newErrors.jobQty = "Job Quantity is required";
     if (!calculationSize) newErrors.calculationSize = "Label size is required";
     if (!upsAcrossValue) newErrors.upsAcrossValue = "Across Ups is required";
-    if (!aroundGap) newErrors.aroundGap = "Around Gap is required"; // ✅ NEW VALIDATION
+    if (!aroundGap) newErrors.aroundGap = "Around Gap is required";
     if (!totalPaperRequired)
       newErrors.totalPaperRequired = "Total Paper Required is required";
 
@@ -464,20 +545,61 @@ const AddJob = () => {
               onChange={(e) => setJobDate(new Date(e.target.value))}
             />
 
-            {/* Job Name */}
-            <div>
-              <PrimaryInput
-                type="text"
-                name="jobName"
-                placeholder="Job Name"
-                value={jobName}
-                onChange={(e) => {
-                  setJobName(e.target.value);
-                  setErrors((prev) => ({ ...prev, jobName: "" }));
-                }}
-              />
+            {/* ✅ Job Name with Autocomplete */}
+            <div className="relative">
+              <div className="flex items-center gap-2">
+                <PrimaryInput
+                  type="text"
+                  name="jobName"
+                  placeholder="Job Name"
+                  value={jobName}
+                  onChange={(e) => {
+                    const text = e.target.value;
+                    setJobName(text);
+                    setSelectedJob(null);
+                    setErrors((prev) => ({ ...prev, jobName: "" }));
+
+                    if (text.length >= 2) {
+                      searchJobNames(text);
+                    } else {
+                      setSearchResults([]);
+                      setShowSuggestions(false);
+                    }
+                  }}
+                />
+                {selectedJob && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedJob(null);
+                      setJobName("");
+                      setSearchResults([]);
+                      setShowSuggestions(false);
+                      clearAutoFilledData();
+                    }}
+                    className="text-red-600 text-xl font-bold hover:text-red-800"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
               {errors.jobName && (
                 <p className="text-red-600 text-sm">{errors.jobName}</p>
+              )}
+
+              {/* ✅ Autocomplete Dropdown */}
+              {showSuggestions && searchResults.length > 0 && !selectedJob && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {searchResults.map((item, index) => (
+                    <div
+                      key={index}
+                      onClick={() => handleSelectJob(item)}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0"
+                    >
+                      <p className="text-sm text-gray-800">{item.jobName}</p>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -492,6 +614,7 @@ const AddJob = () => {
                   setJobCardNo(e.target.value);
                   setErrors((prev) => ({ ...prev, jobCardNo: "" }));
                 }}
+                readOnly={true}
               />
               {errors.jobCardNo && (
                 <p className="text-red-600 text-sm">{errors.jobCardNo}</p>
@@ -549,7 +672,7 @@ const AddJob = () => {
               )}
             </div>
 
-            {/* ✅ Paper Size - NEW FIELD */}
+            {/* Paper Size */}
             <div>
               <PrimaryInput
                 type={"number"}
@@ -679,7 +802,7 @@ const AddJob = () => {
               ))}
             </select>
 
-            {/* ✅ Around Gap - REQUIRED FIELD, placed BEFORE totalPaperRequired */}
+            {/* Around Gap */}
             <div>
               <PrimaryInput
                 type={"number"}
@@ -696,7 +819,7 @@ const AddJob = () => {
               )}
             </div>
 
-            {/* Total Paper Required - can be manually edited */}
+            {/* Total Paper Required */}
             <div>
               <PrimaryInput
                 type={"text"}
@@ -789,7 +912,7 @@ const AddJob = () => {
 
           <PrimaryBtn
             onClick={handleSubmit}
-            className=" w-full mx-auto md:col-span-2"
+            className="w-full mx-auto md:col-span-2"
           >
             Submit
           </PrimaryBtn>

@@ -158,6 +158,18 @@ const MaterialIssueForm = () => {
           return 0;
         };
 
+        // ✅ Helper function to calculate available rolls// ✅ Helper function to calculate available rolls
+        const calculateAvailableRolls = (
+          availableMeter,
+          runningMeterPerRoll
+        ) => {
+          if (!runningMeterPerRoll || runningMeterPerRoll === 0) return 0;
+          // Round to avoid floating point issues
+          return Math.floor(
+            Math.round((availableMeter / runningMeterPerRoll) * 100) / 100
+          );
+        };
+
         // ✅ RAW Materials Query
         const rawQuery = query(
           collection(db, "materials"),
@@ -167,16 +179,28 @@ const MaterialIssueForm = () => {
 
         const rawSnapshot = await getDocs(rawQuery);
         const rawList = rawSnapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            paperCode: doc.data().paperCode,
-            availableMeter: doc.data().availableRunningMeter || 0,
-            totalRolls: doc.data().roll || 0,
-            runningMeter: doc.data().runningMeter || 0,
-            // rack: doc.data().rack || "N/A",
-            createdAt: doc.data().createdAt,
-          }))
+          .map((doc) => {
+            const data = doc.data();
+            const availableMeter = data.availableRunningMeter || 0;
+            const runningMeter = data.runningMeter || 0;
+
+            // ✅ Calculate current available rolls dynamically
+            const currentAvailableRolls = calculateAvailableRolls(
+              availableMeter,
+              runningMeter
+            );
+
+            return {
+              id: doc.id,
+              ...data,
+              paperCode: data.paperCode,
+              availableMeter: availableMeter,
+              totalRolls: data.roll || 0, // Original total rolls (for reference)
+              runningMeter: runningMeter,
+              currentAvailableRolls: currentAvailableRolls, // ✅ NEW: Current available rolls
+              createdAt: data.createdAt,
+            };
+          })
           .sort(
             (a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt)
           );
@@ -197,7 +221,6 @@ const MaterialIssueForm = () => {
               ...data,
               paperCode: data.paperCode,
               availableMeter: data.availableRunningMeter || 0,
-              // rack: data.rack || "N/A",
               sourceJobCardNo: data.sourceJobCardNo,
               customerName: ordersMap[data.sourceJobCardNo] || "-",
               createdAt: data.createdAt,
@@ -223,7 +246,6 @@ const MaterialIssueForm = () => {
               ...data,
               paperCode: data.paperCode,
               availableMeter: data.availableRunningMeter || 0,
-              // rack: data.rack || "N/A",
               stage: data.sourceStage || "Unknown",
               sourceJobCardNo: data.sourceJobCardNo,
               customerName: ordersMap[data.sourceJobCardNo] || "-",
@@ -322,6 +344,8 @@ const MaterialIssueForm = () => {
     });
   };
 
+  // Add this helper function at the top of your component, after the imports
+
   const filteredLO = filterMaterials(LO, searchLO, "LO");
   const filteredWIP = filterMaterials(WIP, searchWIP, "WIP");
   const filteredRAW = filterMaterials(RAW, searchRAW, "RAW");
@@ -338,7 +362,7 @@ const MaterialIssueForm = () => {
       // ✅ For RAW materials ONLY, calculate issued meter based on rolls
       // For LO/WIP, use available meter (manual entry) and NO roll tracking
       if (materialType === "RAW") {
-        const defaultIssuedRolls = roll.totalRolls;
+        const defaultIssuedRolls = roll.currentAvailableRolls;
         const defaultIssuedMeter = roll.runningMeter * defaultIssuedRolls;
 
         setSelectedRolls([
@@ -402,8 +426,8 @@ const MaterialIssueForm = () => {
 
     if (rollsValue < 0) return;
 
-    if (roll && rollsValue > roll.totalRolls) {
-      alert(`Issued rolls cannot exceed available rolls (${roll.totalRolls})`);
+    if (roll && rollsValue > roll.currentAvailableRolls) {
+      alert(`Issued rolls cannot exceed available rolls (${roll.currentAvailableRolls})`);
       return;
     }
 
@@ -451,7 +475,7 @@ const MaterialIssueForm = () => {
     const missingRolls = selectedRolls.filter(
       (roll) =>
         roll.materialType === "RAW" &&
-        (!roll.issuedRolls || Number(roll.issuedRolls) <= 0)
+        (!roll.issuedRolls || Number(roll.currentAvailableRolls) <= 0)
     );
 
     if (missingRolls.length > 0) {
@@ -618,6 +642,9 @@ const MaterialIssueForm = () => {
 
           materialUpdates[`materialCategory${suffix}`] =
             roll.materialCategory || "RAW";
+
+          // ✅ ADD THIS: Store allocation timestamp
+          materialUpdates[`allocatedAt${suffix}`] = new Date();
 
           currentOrderData[`paperProductCode${suffix}`] =
             materialUpdates[`paperProductCode${suffix}`];
@@ -1062,7 +1089,8 @@ const MaterialTable = ({
                   {isRawMaterial && (
                     <>
                       <td className="p-2 border font-semibold">
-                        {roll.totalRolls || 0}
+                        {/* {roll.totalRolls || 0} */}
+                        {roll.currentAvailableRolls || 0}
                       </td>
                       <td className="p-2 border font-semibold">
                         {roll.runningMeter || 0}m
@@ -1097,7 +1125,8 @@ const MaterialTable = ({
                         value={selectedRoll?.issuedRolls || ""}
                         onChange={(e) => onRollsChange(roll.id, e.target.value)}
                         placeholder="rolls"
-                        max={roll.totalRolls}
+                        // max={roll.totalRolls}
+                        max={roll.currentAvailableRolls}
                         min="0"
                       />
                     </td>
