@@ -188,11 +188,13 @@ const AddJob = () => {
       // Get all documents and filter client-side for case-insensitive search
       // Note: For large datasets, consider using Algolia or creating a searchable field
       const snapshot = await getDocs(collection(db, "ordersTest"));
-      
+
       const results = snapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((doc) => 
-          doc.jobName && doc.jobName.toLowerCase().includes(text.toLowerCase())
+        .filter(
+          (doc) =>
+            doc.jobName &&
+            doc.jobName.toLowerCase().includes(text.toLowerCase())
         )
         .slice(0, 10);
 
@@ -556,7 +558,7 @@ const AddJob = () => {
                     setJobName(text);
                     setSelectedJob(null);
                     setErrors((prev) => ({ ...prev, jobName: "" }));
-                    
+
                     if (text.length >= 2) {
                       searchJobNames(text);
                     } else {

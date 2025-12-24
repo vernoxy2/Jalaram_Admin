@@ -14,7 +14,9 @@ const MaterialIssueRequestList = () => {
   const [toDate, setToDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [dateError, setDateError] = useState("");
-  const [highlightId, setHighlightId] = useState(location.state?.highlightId || null);
+  const [highlightId, setHighlightId] = useState(
+    location.state?.highlightId || null
+  );
   const rowRefs = useRef({});
 
   const itemsPerPage = 10;
@@ -224,56 +226,64 @@ const MaterialIssueRequestList = () => {
           </thead>
 
           <tbody>
-            {currentItems.map((item, index) => {
-              const issuedMeter = Number(item.issuedMeter || 0);
-              const isHighlighted = highlightId === item.id;
+            {currentItems.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="text-center p-8 text-gray-500">
+                  <div className="font-medium">No request found.</div>
+                </td>
+              </tr>
+            ) : (
+              currentItems.map((item, index) => {
+                const issuedMeter = Number(item.issuedMeter || 0);
+                const isHighlighted = highlightId === item.id;
 
-              return (
-                <tr
-                  key={index}
-                  ref={(el) => (rowRefs.current[item.id] = el)}
-                  className={`border text-center transition-all duration-300 ${
-                    isHighlighted
-                      ? "bg-yellow-100 shadow-lg scale-[1.02]"
-                      : "hover:bg-gray-50"
-                  }`}
-                >
-                  <td className="border px-4 py-2">{item.jobCardNo}</td>
-                  <td className="border px-4 py-2">{item.jobName}</td>
-                  <td className="border px-4 py-2">
-                    {item.customerName ?? "-"}
-                  </td>
-                  <td className="border px-4 py-2">
-                    {item.createdAt
-                      ? new Date(item.createdAt.seconds * 1000)
-                          .toISOString()
-                          .split("T")[0]
-                      : ""}
-                  </td>
-                  <td className="border px-4 py-2">
-                    {item.requiredMaterial
-                      ? parseFloat(item.requiredMaterial).toString()
-                      : ""}
-                  </td>
-                  <td className="border px-4 py-2">{issuedMeter}</td>
-                  <td className="border px-4 py-2">{item.createdBy}</td>
+                return (
+                  <tr
+                    key={index}
+                    ref={(el) => (rowRefs.current[item.id] = el)}
+                    className={`border text-center transition-all duration-300 ${
+                      isHighlighted
+                        ? "bg-yellow-100 shadow-lg scale-[1.02]"
+                        : "hover:bg-gray-50"
+                    }`}
+                  >
+                    <td className="border px-4 py-2">{item.jobCardNo}</td>
+                    <td className="border px-4 py-2">{item.jobName}</td>
+                    <td className="border px-4 py-2">
+                      {item.customerName ?? "-"}
+                    </td>
+                    <td className="border px-4 py-2">
+                      {item.createdAt
+                        ? new Date(item.createdAt.seconds * 1000)
+                            .toISOString()
+                            .split("T")[0]
+                        : ""}
+                    </td>
+                    <td className="border px-4 py-2">
+                      {item.requiredMaterial
+                        ? parseFloat(item.requiredMaterial).toString()
+                        : ""}
+                    </td>
+                    <td className="border px-4 py-2">{issuedMeter}</td>
+                    <td className="border px-4 py-2">{item.createdBy}</td>
 
-                  {/* Action Column */}
-                  <td className="border px-4 py-2">
-                    {shouldShowIssueButton(item) ? (
-                      <button
-                        className="bg-[#D2D2D2]/40 border hover:border-primary font-semibold text-primary px-3 py-1 rounded-lg"
-                        onClick={() => navigate(`/issue_material/${item.id}`)}
-                      >
-                        Issue Now
-                      </button>
-                    ) : (
-                      <span className="text-gray-400 text-sm">-</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+                    {/* Action Column */}
+                    <td className="border px-4 py-2">
+                      {shouldShowIssueButton(item) ? (
+                        <button
+                          className="bg-[#D2D2D2]/40 border hover:border-primary font-semibold text-primary px-3 py-1 rounded-lg"
+                          onClick={() => navigate(`/issue_material/${item.id}`)}
+                        >
+                          Issue Now
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>

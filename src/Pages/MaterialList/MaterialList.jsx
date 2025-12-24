@@ -13,14 +13,14 @@ const MaterialList = () => {
 
   const [materials, setMaterials] = useState([]);
   const [activeTab, setActiveTab] = useState("raw"); // 'raw' or 'created'
-  
+
   // Search and filters
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [categoryFilter, setCategoryFilter] = useState(""); // Only for created tab
   const [sortOrder, setSortOrder] = useState("desc"); // 'asc' or 'desc'
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -91,7 +91,9 @@ const MaterialList = () => {
 
       // ✅ Extract string values for search
       const paperCodeStr = getDisplayValue(item.paperCode).toLowerCase();
-      const paperProductCodeStr = getDisplayValue(item.paperProductCode).toLowerCase();
+      const paperProductCodeStr = getDisplayValue(
+        item.paperProductCode
+      ).toLowerCase();
       const jobPaperStr = getDisplayValue(item.jobPaper).toLowerCase();
 
       // Search filter
@@ -109,7 +111,11 @@ const MaterialList = () => {
       if (toDate && formattedDate > toDate) return false;
 
       // Category filter (only for created tab)
-      if (activeTab === "created" && categoryFilter && item.materialCategory !== categoryFilter) {
+      if (
+        activeTab === "created" &&
+        categoryFilter &&
+        item.materialCategory !== categoryFilter
+      ) {
         return false;
       }
 
@@ -124,7 +130,7 @@ const MaterialList = () => {
       const dateB = b.createdAt?.toDate
         ? b.createdAt.toDate()
         : new Date(b.createdAt);
-      
+
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
 
@@ -242,7 +248,9 @@ const MaterialList = () => {
         {/* Material Category - Only for Created Tab */}
         {activeTab === "created" && (
           <div className="flex-1 min-w-[200px]">
-            <label className="block mb-2 font-medium text-base">Material Category</label>
+            <label className="block mb-2 font-medium text-base">
+              Material Category
+            </label>
             <select
               value={categoryFilter}
               onChange={(e) => {
@@ -260,7 +268,9 @@ const MaterialList = () => {
 
         {/* Sort Order Toggle */}
         <div className="flex-shrink-0">
-          <label className="block mb-2 font-medium text-base">Sort by Date</label>
+          <label className="block mb-2 font-medium text-base">
+            Sort by Date
+          </label>
           <button
             onClick={toggleSortOrder}
             className="border border-black/20 rounded-2xl p-3 px-6 flex items-center gap-2 hover:bg-gray-50 transition-colors"
@@ -298,19 +308,37 @@ const MaterialList = () => {
         <table className="table-auto w-full rounded-xl">
           <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-xl px-3 text-white">
             <tr>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Date</th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Paper Code</th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Company</th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">Material Type</th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Date
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Paper Code
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Company
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Material Type
+              </th>
               {activeTab === "created" && (
                 <>
-                  <th className="px-4 py-2 border-r-2 whitespace-nowrap">Material Category</th>
-                  <th className="px-4 py-2 border-r-2 whitespace-nowrap">Source Job</th>
-                  <th className="px-4 py-2 border-r-2 whitespace-nowrap">Source Stage</th>
+                  <th className="px-4 py-2 border-r-2 whitespace-nowrap">
+                    Material Category
+                  </th>
+                  <th className="px-4 py-2 border-r-2 whitespace-nowrap">
+                    Source Job
+                  </th>
+                  <th className="px-4 py-2 border-r-2 whitespace-nowrap">
+                    Source Stage
+                  </th>
                 </>
               )}
-              <th className="px-4 py-2 border-r-2 whitespace-pre">Total Running Meter</th>
-              <th className="px-4 py-2 border-r-2 whitespace-pre">Available Running Meter</th>
+              <th className="px-4 py-2 border-r-2 whitespace-pre">
+                Total Running Meter
+              </th>
+              <th className="px-4 py-2 border-r-2 whitespace-pre">
+                Available Running Meter
+              </th>
               <th className="px-4 py-2 whitespace-pre">Action</th>
             </tr>
           </thead>
@@ -327,11 +355,15 @@ const MaterialList = () => {
                       ).toLocaleDateString("en-IN")
                     : ""}
                 </td>
-                <td className="border px-2 md:px-4 py-2">{getDisplayValue(item.paperCode)}</td>
+                <td className="border px-2 md:px-4 py-2">
+                  {getDisplayValue(item.paperCode)}
+                </td>
                 <td className="border px-2 md:px-4 py-2">
                   {getDisplayValue(item.paperProductCode)}
                 </td>
-                <td className="border px-2 md:px-4 py-2">{getDisplayValue(item.jobPaper)}</td>
+                <td className="border px-2 md:px-4 py-2">
+                  {getDisplayValue(item.jobPaper)}
+                </td>
                 {activeTab === "created" && (
                   <>
                     <td className="border px-4 py-2">
@@ -355,7 +387,9 @@ const MaterialList = () => {
                     </td>
                   </>
                 )}
-                <td className="border px-2 md:px-4 py-2">{item.totalRunningMeter}</td>
+                <td className="border px-2 md:px-4 py-2">
+                  {item.totalRunningMeter}
+                </td>
                 <td className="border px-2 md:px-4 py-2">
                   {item.availableRunningMeter}
                 </td>
@@ -381,11 +415,7 @@ const MaterialList = () => {
                   colSpan={activeTab === "created" ? "10" : "7"}
                   className="text-center p-8 text-gray-500"
                 >
-                  <div className="text-4xl mb-2">📦</div>
                   <div className="font-medium">No materials found</div>
-                  <div className="text-sm mt-1">
-                    Try adjusting your search or filter criteria
-                  </div>
                 </td>
               </tr>
             )}

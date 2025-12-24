@@ -22,7 +22,11 @@ const StockReport = () => {
   // Helper function to safely extract value from potential objects
   const safeValue = (val) => {
     if (val === null || val === undefined) return "-";
-    if (typeof val === 'object' && !Array.isArray(val) && !(val instanceof Date)) {
+    if (
+      typeof val === "object" &&
+      !Array.isArray(val) &&
+      !(val instanceof Date)
+    ) {
       return val.value || val.label || "-";
     }
     return val;
@@ -30,9 +34,9 @@ const StockReport = () => {
 
   // Handle category checkbox toggle
   const handleCategoryToggle = (category) => {
-    setCategoryFilter(prev => {
+    setCategoryFilter((prev) => {
       if (prev.includes(category)) {
-        return prev.filter(c => c !== category);
+        return prev.filter((c) => c !== category);
       } else {
         return [...prev, category];
       }
@@ -75,7 +79,7 @@ const StockReport = () => {
               if (t.paperCode === material.paperCode) {
                 return true;
               }
-              
+
               // Check paperProductNo (comma-separated, for consumption transactions)
               const transactionPaperCodes = t.paperProductNo
                 ? t.paperProductNo.split(",").map((code) => code.trim())
@@ -102,7 +106,6 @@ const StockReport = () => {
           const issueTransactions = materialTransactions.filter(
             (t) => t.transactionType === "issue"
           );
-          
           const totalIssue = issueTransactions.reduce(
             (sum, t) => sum + (parseFloat(t.usedQty) || 0),
             0
@@ -177,7 +180,6 @@ const StockReport = () => {
                 (sum, t) => sum + (parseFloat(t.wipQty) || 0),
                 0
               );
-
               // ✅ Used = Created - (Waste + LO + WIP)
               totalUsed = created - (totalWaste + totalLO + totalWIP);
 
@@ -213,17 +215,20 @@ const StockReport = () => {
 
           // Find which RAW paper codes were used to create this LO/WIP
           let usedRawPaperCodes = [];
-          if (material.materialCategory === "LO" || material.materialCategory === "WIP") {
+          if (
+            material.materialCategory === "LO" ||
+            material.materialCategory === "WIP"
+          ) {
             const creationTransactions = transactions.filter((t) => {
               if (!t.newPaperCode) return false;
-              const newCodes = t.newPaperCode.split(",").map(c => c.trim());
+              const newCodes = t.newPaperCode.split(",").map((c) => c.trim());
               return newCodes.includes(material.paperCode);
             });
 
             creationTransactions.forEach((t) => {
               if (t.paperProductNo) {
-                const codes = t.paperProductNo.split(",").map(c => c.trim());
-                codes.forEach(code => {
+                const codes = t.paperProductNo.split(",").map((c) => c.trim());
+                codes.forEach((code) => {
                   if (!usedRawPaperCodes.includes(code)) {
                     usedRawPaperCodes.push(code);
                   }
@@ -283,25 +288,31 @@ const StockReport = () => {
     if (!matchesSearch) return false;
     if (fromDate && formattedDate < fromDate) return false;
     if (toDate && formattedDate > toDate) return false;
-    
+
     // ✅ Updated: Check if item's category is in the selected categories array
-    if (categoryFilter.length > 0 && !categoryFilter.includes(item.materialCategory)) {
+    if (
+      categoryFilter.length > 0 &&
+      !categoryFilter.includes(item.materialCategory)
+    ) {
       return false;
     }
 
     // Paper Code History Filter
     if (paperCodeFilter) {
-      if (item.paperCode === paperCodeFilter && item.materialCategory === "RAW") {
+      if (
+        item.paperCode === paperCodeFilter &&
+        item.materialCategory === "RAW"
+      ) {
         return true;
       }
-      
+
       if (
         (item.materialCategory === "LO" || item.materialCategory === "WIP") &&
         item.usedRawPaperCodes.includes(paperCodeFilter)
       ) {
         return true;
       }
-      
+
       return false;
     }
 
@@ -321,7 +332,39 @@ const StockReport = () => {
   };
 
   // Summary totals
-  const summaryTotals = filteredStock.reduce(
+  // const summaryTotals = filteredStock.reduce(
+  //   (acc, item) => {
+  //     acc.purchased += item.purchased;
+  //     acc.created += item.created;
+  //     acc.totalIssue += item.totalIssue; // ✅ New field
+  //     acc.used += item.used;
+  //     acc.waste += item.waste;
+
+  //     if (item.materialCategory === "LO") {
+  //       acc.loCreated += item.created;
+  //     }
+
+  //     if (item.materialCategory === "WIP") {
+  //       acc.wipCreated += item.created;
+  //     }
+
+  //     acc.available += item.available;
+
+  //     return acc;
+  //   },
+  //   {
+  //     purchased: 0,
+  //     created: 0,
+  //     totalIssue: 0, // ✅ New field
+  //     used: 0,
+  //     waste: 0,
+  //     loCreated: 0,
+  //     wipCreated: 0,
+  //     available: 0,
+  //   }
+  // );
+  // Summary totals - ALWAYS calculated from ALL data (stockData), not filtered
+  const summaryTotals = stockData.reduce(
     (acc, item) => {
       acc.purchased += item.purchased;
       acc.created += item.created;
@@ -352,14 +395,15 @@ const StockReport = () => {
       available: 0,
     }
   );
-
   // Get unique paper codes for filter dropdown
-  const uniquePaperCodes = [...new Set(
-    stockData
-      .filter(item => item.materialCategory === "RAW")
-      .map(item => item.paperCode)
-      .filter(code => code !== "-")
-  )].sort();
+  const uniquePaperCodes = [
+    ...new Set(
+      stockData
+        .filter((item) => item.materialCategory === "RAW")
+        .map((item) => item.paperCode)
+        .filter((code) => code !== "-")
+    ),
+  ].sort();
 
   // Export to CSV
   const exportToCSV = () => {
@@ -588,9 +632,12 @@ const StockReport = () => {
       {paperCodeFilter && (
         <div className="bg-blue-50 p-3 rounded-lg">
           <p className="text-sm">
-            <strong>📜 Showing history for Paper Code: {paperCodeFilter}</strong>
+            <strong>
+              📜 Showing history for Paper Code: {paperCodeFilter}
+            </strong>
             <br />
-            Displaying the RAW material and all LO/WIP materials created from it during production stages.
+            Displaying the RAW material and all LO/WIP materials created from it
+            during production stages.
           </p>
         </div>
       )}
@@ -601,21 +648,43 @@ const StockReport = () => {
           <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD]  text-white">
             <tr>
               <th className="px-3 py-3 border-r-2 whitespace-nowrap">Date</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Paper Code</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Company</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Material Type</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Category</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Customer</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Paper Size</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-blue-900">Purchased</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-blue-900">Created</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-orange-900">Total Issue</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
+                Paper Code
+              </th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
+                Company
+              </th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
+                Material Type
+              </th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
+                Category
+              </th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
+                Customer
+              </th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
+                Paper Size
+              </th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-blue-900">
+                Purchased
+              </th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-blue-900">
+                Created
+              </th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-orange-900">
+                Total Issue
+              </th>
               <th className="px-3 py-3 border-r-2 whitespace-nowrap">Used</th>
               <th className="px-3 py-3 border-r-2 whitespace-nowrap">Waste</th>
               <th className="px-3 py-3 border-r-2 whitespace-nowrap">LO</th>
               <th className="px-3 py-3 border-r-2 whitespace-nowrap">WIP</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Available</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Source Job</th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
+                Available
+              </th>
+              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
+                Source Job
+              </th>
               <th className="px-3 py-3">Source Stage</th>
             </tr>
           </thead>
@@ -629,9 +698,7 @@ const StockReport = () => {
                 <td className="border px-3 py-2  font-medium">
                   {item.paperCode}
                 </td>
-                <td className="border px-3 py-2 ">
-                  {item.paperProductCode}
-                </td>
+                <td className="border px-3 py-2 ">{item.paperProductCode}</td>
                 <td className="border px-3 py-2 ">{item.jobPaper}</td>
                 <td className="border px-3 py-2">
                   <span
@@ -672,9 +739,7 @@ const StockReport = () => {
                 <td className="border px-3 py-2 font-bold text-indigo-600">
                   {formatNumber(item.available)}
                 </td>
-                <td className="border px-3 py-2 ">
-                  {item.sourceJobCardNo}
-                </td>
+                <td className="border px-3 py-2 ">{item.sourceJobCardNo}</td>
                 <td className="border px-3 py-2 capitalize">
                   {item.sourceStage}
                 </td>
@@ -770,7 +835,8 @@ const StockReport = () => {
             production
           </li>
           <li>
-            <strong>Total Issue:</strong> Total material issued from stock for production jobs
+            <strong>Total Issue:</strong> Total material issued from stock for
+            production jobs
           </li>
           <li>
             <strong>Used:</strong> For RAW - final output from last stage. For
@@ -784,7 +850,9 @@ const StockReport = () => {
             <strong>Available:</strong> Current stock available for use
           </li>
           <li>
-            <strong>Paper Code History Filter:</strong> Select a RAW paper code to see its complete journey - the original RAW material purchase and all LO/WIP materials that were created from it during production.
+            <strong>Paper Code History Filter:</strong> Select a RAW paper code
+            to see its complete journey - the original RAW material purchase and
+            all LO/WIP materials that were created from it during production.
           </li>
         </ul>
       </div>
