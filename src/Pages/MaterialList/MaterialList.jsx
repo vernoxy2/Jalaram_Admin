@@ -138,7 +138,6 @@ const MaterialList = () => {
   };
 
   const filteredMaterials = getFilteredMaterials();
-
   // Pagination calculations
   const totalPages = Math.ceil(filteredMaterials.length / itemsPerPage);
   const indexOfLast = currentPage * itemsPerPage;
@@ -337,6 +336,9 @@ const MaterialList = () => {
                 Total Running Meter
               </th>
               <th className="px-4 py-2 border-r-2 whitespace-pre">
+                No. of Rolls
+              </th>
+              <th className="px-4 py-2 border-r-2 whitespace-pre">
                 Available Running Meter
               </th>
               <th className="px-4 py-2 whitespace-pre">Action</th>
@@ -390,6 +392,7 @@ const MaterialList = () => {
                 <td className="border px-2 md:px-4 py-2">
                   {item.totalRunningMeter}
                 </td>
+                <td className="border px-2 md:px-4 py-2">{item.roll || "-"}</td>
                 <td className="border px-2 md:px-4 py-2">
                   {item.availableRunningMeter}
                 </td>
