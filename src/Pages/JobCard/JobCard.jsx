@@ -107,6 +107,46 @@ const JobCard = () => {
     }
   };
 
+  const FloatingInput = ({
+    type = "text",
+    value,
+    onChange,
+    name,
+    label,
+    readOnly,
+    error,
+  }) => {
+    const [isFocused, setIsFocused] = useState(false);
+    const hasValue = value !== "" && value !== null && value !== undefined;
+  
+    return (
+      <div className="relative">
+        <input
+          type={type}
+          value={value}
+          name={name}
+          onChange={onChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          readOnly={readOnly}
+          className={`inputStyle peer ${error ? "border-red-500" : ""} ${
+            readOnly ? "bg-gray-50 cursor-not-allowed" : ""
+          }`}
+        />
+        <label
+          className={`absolute left-3 transition-all duration-200 pointer-events-none ${
+            isFocused || hasValue
+              ? "-top-2.5 text-xs text-gray-600 font-medium bg-white px-1 py-0.5 rounded-sm "
+              : "top-1/2 -translate-y-1/2 text-gray-500"
+          }`}
+        >
+          {label}
+        </label>
+        {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-2 md:space-y-4 ">
       <h1>Job Card</h1>
@@ -157,6 +197,7 @@ const JobCard = () => {
           setSearch(e.target.value);
           setCurrentPage(1);
         }}
+        
       />
       
 

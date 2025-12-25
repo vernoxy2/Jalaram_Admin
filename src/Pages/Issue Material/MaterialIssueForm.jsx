@@ -704,33 +704,33 @@ const MaterialIssueForm = () => {
 
         <div className="py-16 bg-[#F6F6F6] rounded-2xl container space-y-8">
           <div className="grid md:grid-cols-2 gap-8 ">
-            <Input
+            <PrimaryInput
               label="Job Card No"
               name="jobCardNo"
               value={formData.jobCardNo}
               onChange={handleChange}
               readOnly
             />
-            <Input
+            <PrimaryInput
               label="Job Name"
               name="jobName"
               value={formData.jobName}
               onChange={handleChange}
               readOnly
             />
-            <Input
+            <PrimaryInput
               label="Customer Name"
               name="customerName"
               value={formData.customerName}
               readOnly
             />
-            <Input
+            <PrimaryInput
               label="Paper Size"
               name="paperSize"
               value={formData.paperSize}
               onChange={handleChange}
             />
-            <Input
+            <PrimaryInput
               label="Remaining Material"
               name="requestedMaterial"
               value={formData.requestedMaterial}
@@ -738,7 +738,7 @@ const MaterialIssueForm = () => {
               readOnly
             />
 
-            <select
+            {/* <select
               className="inputStyle"
               value={jobPaper}
               onChange={(e) => {
@@ -752,32 +752,39 @@ const MaterialIssueForm = () => {
                   {item.label}
                 </option>
               ))}
-            </select>
+            </select> */}
+            <FloatingSelect
+              label="Material Type"
+              name="jobPaper"
+              value={jobPaper}
+              onChange={(e) => {
+                setJobPaper(e.target.value);
+                setSelectedRolls([]);
+              }}
+              options={materialTypeList}
+              required
+            />
 
-            <select
-              className="inputStyle"
+            <FloatingSelect
+              label="Company Name"
+              name="paperProductCode"
               value={paperProductCode}
               onChange={(e) => {
                 setPaperProductCode(e.target.value);
                 setSelectedRolls([]);
               }}
-            >
-              <option value="">Select Company Name</option>
-              {paperProductCodeData.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              options={paperProductCodeData}
+              required
+            />
 
-            <Input
+            <PrimaryInput
               label="Request Date"
               type="date"
               name="requestDate"
               value={formData.requestDate}
               onChange={handleChange}
             />
-            <Input
+            <PrimaryInput
               label="Allote Date"
               type="date"
               name="alloteDate"
@@ -803,10 +810,11 @@ const MaterialIssueForm = () => {
                   Leftover (LO)
                 </h2>
 
-                <SearchBar
+                <PrimaryInput
+                  label="Search LO materials (Paper Code, Available Meter, Source Job, Customer, Date...)"
                   value={searchLO}
                   onChange={setSearchLO}
-                  placeholder="Search LO materials (Paper Code, Available Meter, Source Job, Customer, Date...)"
+                  // placeholder="Search LO materials (Paper Code, Available Meter, Source Job, Customer, Date...)"
                 />
 
                 <MaterialTable
@@ -944,28 +952,97 @@ export default MaterialIssueForm;
 
 /* ---------------- Helper Components ---------------- */
 
-const Input = ({
+const PrimaryInput = ({
   label,
   name,
   value,
   onChange,
   type = "text",
   readOnly = false,
-}) => (
-  <div className="flex flex-col space-y-1">
-    <input
-      name={name}
-      type={type}
-      value={value}
-      onChange={onChange}
-      className={`inputStyle ${
-        readOnly ? "bg-gray-100 cursor-not-allowed" : ""
-      }`}
-      placeholder={label}
-      readOnly={readOnly}
-    />
-  </div>
-);
+  error,
+  placeholder,
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const hasValue = value !== "" && value !== null && value !== undefined;
+
+  return (
+    <div className="relative flex flex-col">
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        readOnly={readOnly}
+        placeholder={placeholder || label}
+        className={`inputStyle ${
+          error ? "border-red-500" : "border-gray-300"
+        } ${readOnly ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
+      />
+      {label && (
+        <label
+          htmlFor={name}
+          className={`absolute left-3 transition-all duration-200 pointer-events-none ${
+            isFocused || readOnly || hasValue
+              ? "-top-2.5 text-xs text-gray-600 bg-gray-100 px-1 rounded-sm"
+              : "top-2 text-gray-400"
+          }`}
+        >
+          {label}
+        </label>
+      )}
+      {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+    </div>
+  );
+};
+
+const FloatingSelect = ({
+  value,
+  onChange,
+  name,
+  label,
+  options = [],
+  error,
+  required = false,
+  readOnly = false,
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const hasValue = value !== "" && value !== null && value !== undefined;
+
+  return (
+    <div className="relative">
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        disabled={readOnly}
+        className={`inputStyle peer w-full rounded-md  transition-all ${
+          error ? "border-red-500" : "border-gray-300"
+        } ${readOnly ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
+      >
+        <option value="" disabled hidden></option>
+        {options.map((item) => (
+          <option key={item.value} value={item.value}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+      <label
+        className={`absolute left-3 transition-all duration-200 pointer-events-none ${
+          isFocused || hasValue
+            ? "-top-2 text-xs text-gray-800 font-medium bg-white px-1 py-0.5 rounded-sm"
+            : "top-2 text-gray-500"
+        }`}
+      >
+        {label} {required && "*"}
+      </label>
+      {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+    </div>
+  );
+};
 
 const SearchBar = ({ value, onChange, placeholder }) => (
   <div className="w-full relative">
