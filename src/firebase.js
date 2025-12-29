@@ -3,8 +3,8 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import {
   getAuth,
-  signInAnonymously,
-  onAuthStateChanged,
+  // signInAnonymously,
+  // onAuthStateChanged,
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -26,12 +26,12 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 
 // 🔥 Anonymous Auto Login
-onAuthStateChanged(auth, (user) => {
-  if (!user) {
-    signInAnonymously(auth)
-      .then(() => console.log("Signed in anonymously"))
-      .catch((err) => console.error("Anonymous login failed:", err));
-  } else {
-    console.log("Already logged in:", user.uid);
-  }
-});
+// onAuthStateChanged(auth, (user) => {
+//   if (!user) {
+//     signInAnonymously(auth)
+//       .then(() => console.log("Signed in anonymously"))
+//       .catch((err) => console.error("Anonymous login failed:", err));
+//   } else {
+//     console.log("Already logged in:", user.uid);
+//   }
+// });
