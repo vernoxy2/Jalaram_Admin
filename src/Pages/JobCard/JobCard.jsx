@@ -152,12 +152,12 @@ const JobCard = () => {
       <h1>Job Card</h1>
       <hr className="my-2" />
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap gap-5 justify-between items-center">
         <Addbtn to="addjob">Add New Job</Addbtn>
         <select
           name=""
           id=""
-          className="bg-[#EDEDED] text-textcolor active:bg-gradient-to-t from-primary to-secondary  active:text-white p-2 rounded-md"
+          className="bg-[#EDEDED] text-textcolor focus:text-white focus:bg-gradient-to-t from-[#102F5C] to-[#3566AD]  active:text-white p-2 rounded-md"
           value={selectedStatus}
           onChange={(e) => {
             setSelectedStatus(e.target.value);
@@ -165,7 +165,7 @@ const JobCard = () => {
           }}
         >
           {jobStatus.map((item) => (
-            <option key={item.value} value={item.value}>
+            <option key={item.value} value={item.value} className="bg-white shadow-xl focus:rounded-2xl text-black ">
               {item.label}
             </option>
           ))}

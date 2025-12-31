@@ -11,6 +11,7 @@ import {
   FaBox,
   FaExclamationTriangle,
   FaCalendarAlt,
+  FaAngleDown,
 } from "react-icons/fa";
 import { GiRolledCloth } from "react-icons/gi";
 import { MdInventory } from "react-icons/md";
@@ -263,12 +264,12 @@ const Dashboard = () => {
               (sum, t) => sum + (parseFloat(t.wasteQty) || 0),
               0
             );
-            
+
             const materialLO = consumptionTransactions.reduce(
               (sum, t) => sum + (parseFloat(t.loQty) || 0),
               0
             );
-            
+
             const materialWIP = consumptionTransactions.reduce(
               (sum, t) => sum + (parseFloat(t.wipQty) || 0),
               0
@@ -408,17 +409,23 @@ const Dashboard = () => {
             {/* Month Selector */}
             <div className="flex items-center gap-2 md:gap-3">
               <FaCalendarAlt className="text-blue-600 text-xl" />
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {monthOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              <div className="relative w-fit">
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="border  border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+                >
+                  {monthOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                  {/* Dropdown Arrow Icon */}
+                </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none ">
+                    <FaAngleDown className="w-5 h-5 text-textcolor " />
+                  </div>
+              </div>
             </div>
           </div>
 
@@ -524,7 +531,9 @@ const Dashboard = () => {
                 <FaPrint className="text-2xl text-purple-600" />
               </div>
               <p className="text-gray-600 font-medium mb-1">Printing</p>
-              <p className="text-purple-600 text-3xl font-bold">{printingJobs}</p>
+              <p className="text-purple-600 text-3xl font-bold">
+                {printingJobs}
+              </p>
             </div>
 
             <div className="bg-white rounded-lg p-5 border border-gray-200">
@@ -532,7 +541,9 @@ const Dashboard = () => {
                 <FaBoxes className="text-2xl text-orange-600" />
               </div>
               <p className="text-gray-600 font-medium mb-1">Punching</p>
-              <p className="text-orange-600 text-3xl font-bold">{punchingJobs}</p>
+              <p className="text-orange-600 text-3xl font-bold">
+                {punchingJobs}
+              </p>
             </div>
 
             <div className="bg-white rounded-lg p-5 border border-gray-200">
@@ -548,7 +559,9 @@ const Dashboard = () => {
                 <FaCheckCircle className="text-2xl text-green-600" />
               </div>
               <p className="text-gray-600  font-medium mb-1">Completed</p>
-              <p className="text-green-600 text-3xl font-bold">{completedJobs}</p>
+              <p className="text-green-600 text-3xl font-bold">
+                {completedJobs}
+              </p>
             </div>
 
             <div className="bg-white rounded-lg p-5 border border-gray-200">
@@ -556,7 +569,9 @@ const Dashboard = () => {
                 <FaHourglassHalf className="text-2xl text-yellow-600" />
               </div>
               <p className="text-gray-600  font-medium mb-1">In Progress</p>
-              <p className="text-yellow-600 text-3xl font-bold">{pendingJobs}</p>
+              <p className="text-yellow-600 text-3xl font-bold">
+                {pendingJobs}
+              </p>
             </div>
           </div>
         </div>
@@ -679,7 +694,9 @@ const Dashboard = () => {
                 </span>
               </div>
               <p className="text-gray-600 font-medium mb-1">Pending Requests</p>
-              <p className="text-yellow-600 text-4xl font-bold">{pendingRequests}</p>
+              <p className="text-yellow-600 text-4xl font-bold">
+                {pendingRequests}
+              </p>
             </div>
 
             <div className="bg-green-50 rounded-lg p-6 border border-green-200">
@@ -691,8 +708,12 @@ const Dashboard = () => {
                   APPROVED
                 </span>
               </div>
-              <p className="text-gray-600  font-medium mb-1">Approved Requests</p>
-              <p className="text-green-600 text-4xl font-bold">{approvedRequests}</p>
+              <p className="text-gray-600  font-medium mb-1">
+                Approved Requests
+              </p>
+              <p className="text-green-600 text-4xl font-bold">
+                {approvedRequests}
+              </p>
             </div>
           </div>
         </div>
