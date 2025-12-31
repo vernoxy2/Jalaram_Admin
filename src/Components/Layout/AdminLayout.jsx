@@ -20,12 +20,13 @@ const AdminLayout = () => {
 
         {/* Main Content */}
         <main className="flex flex-col px-6 py-6 md:pt-10 w-full container">
-          {/* Page Content */}
+          {/* Page Content - takes up all available space */}
           <div className="flex-1">
             <Outlet />
-          <Footer className="mt-auto" />
           </div>
 
+          {/* Footer - always at bottom */}
+          <Footer className="mt-auto" />
         </main>
       </div>
     </div>
