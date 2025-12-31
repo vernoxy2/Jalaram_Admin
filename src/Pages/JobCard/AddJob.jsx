@@ -35,7 +35,7 @@ import {
 import { startTransition } from "react";
 import PrimaryBtn from "../../Components/PrimaryBtn";
 import PrimaryBackBtn from "../../Components/PrimaryBtn";
-import { FaChevronLeft } from "react-icons/fa6";
+import { FaAngleDown, FaChevronLeft } from "react-icons/fa6";
 import BackButton from "../../Components/BackButton";
 import SuccessPopup from "../../Components/SuccessPopup";
 
@@ -94,18 +94,20 @@ const FloatingSelect = ({
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const hasValue = value !== "" && value !== null && value !== undefined;
+  // const shouldFloat = isFocused || hasValue;
+  
 
   return (
     <div className="relative">
       <select
         name={name}
-        value={value}
+        value={value || ""}
         onChange={onChange}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        className={`inputStyle peer ${error ? "border-red-500" : ""}`}
+        className={`inputStyle peer appearance-none ${error ? "border-red-500" : ""}`}
       >
-        <option value=""></option>
+        <option value="" disabled hidden></option>
         {options.map((item) => (
           <option key={item.value} value={item.value}>
             {item.label}
@@ -121,6 +123,11 @@ const FloatingSelect = ({
       >
         {label} {required && "*"}
       </label>
+       {/* Dropdown Arrow Icon */}
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+        
+        <FaAngleDown className="w-5 h-5 text-textcolor"/>
+      </div>
       {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
     </div>
   );

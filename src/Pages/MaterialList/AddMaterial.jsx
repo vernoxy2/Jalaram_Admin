@@ -18,6 +18,7 @@ import PrimaryBtn from "../../Components/PrimaryBtn";
 import Addbtn from "../../Components/Addbtn";
 import BackButton from "../../Components/BackButton";
 import SuccessPopup from "../../Components/SuccessPopup";
+import { FaAngleDown } from "react-icons/fa6";
 
 
 const PrimaryInput = ({
@@ -81,9 +82,9 @@ const PrimarySelect = ({
         onChange={onChange}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        className={`inputStyle peer ${error ? "border-red-500" : ""}`}
+        className={`inputStyle peer appearance-none ${error ? "border-red-500" : ""}`}
       >
-        <option value=""></option>
+        <option value="" disabled hidden></option>
         {options.map((item) => (
           <option key={item.value} value={item.value}>
             {item.label}
@@ -99,6 +100,10 @@ const PrimarySelect = ({
       >
         {label} {required && "*"}
       </label>
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              
+              <FaAngleDown className=" text-textcolor"/>
+            </div>
       {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
     </div>
   );
