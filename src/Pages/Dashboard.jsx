@@ -406,7 +406,7 @@ const Dashboard = () => {
             <h1 className="">Dashboard</h1>
 
             {/* Month Selector */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               <FaCalendarAlt className="text-blue-600 text-xl" />
               <select
                 value={selectedMonth}

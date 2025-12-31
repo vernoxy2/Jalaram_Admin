@@ -203,7 +203,7 @@ const MaterialList = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-6 items-end flex-wrap">
+      <div className="flex gap-4 items-end flex-wrap">
         {/* From Date */}
         <div className="flex-1 min-w-[200px]">
           <label className="block mb-2 font-medium text-base">From Date</label>
@@ -304,6 +304,7 @@ const MaterialList = () => {
 
       {/* Table */}
       <div className="overflow-x-auto rounded-2xl shadow-lg">
+        <div className="max-w-1 inline-block align-middle">
         <table className="table-auto w-full rounded-xl">
           <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-xl px-3 text-white">
             <tr>
@@ -424,6 +425,7 @@ const MaterialList = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}

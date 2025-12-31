@@ -142,7 +142,7 @@ const MaterialIssueRequestList = () => {
 
       {/* Date Filter */}
       <div className="space-y-2">
-        <div className="flex gap-10 items-center">
+        <div className="space-y-3 md:space-y-0 md:flex flex-wrap gap-5 items-center">
           <div className="relative">
             <label className="block mb-2 font-medium">From Date</label>
             <input
@@ -196,8 +196,9 @@ const MaterialIssueRequestList = () => {
       <h2 className="font-bold text-lg">All Jobs</h2>
 
       {/* TABLE */}
-      <div className="overflow-x-auto rounded-2xl shadow-lg md:w-fit">
-        <table className="table-auto rounded-xl">
+      <div className="overflow-x-auto rounded-2xl shadow-lg ">
+        <div className="max-w-1 inline-block align-middle">
+        <table className="table-auto rounded-xl min-w-1">
           <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] md:text-xl px-3 text-white">
             <tr>
               <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
@@ -267,7 +268,7 @@ const MaterialIssueRequestList = () => {
                     <td className="border px-4 py-2">{issuedMeter}</td>
                     <td className="border px-4 py-2">{item.createdBy}</td>
 
-                    {/* Action Column */}
+                    Action Column
                     <td className="border px-4 py-2">
                       {shouldShowIssueButton(item) ? (
                         <button
@@ -286,6 +287,7 @@ const MaterialIssueRequestList = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}
