@@ -118,7 +118,7 @@ const JobCard = () => {
   }) => {
     const [isFocused, setIsFocused] = useState(false);
     const hasValue = value !== "" && value !== null && value !== undefined;
-  
+
     return (
       <div className="relative">
         <input
@@ -197,13 +197,12 @@ const JobCard = () => {
           setSearch(e.target.value);
           setCurrentPage(1);
         }}
-        
       />
 
       {/* Buttons */}
       {/* Date Filter Buttons */}
       {/* Date Filter Buttons */}
-      <div className="flex gap-10 items-center">
+      <div className="md:flex flex-wrap gap-4 space-y-3 md:space-y-0 items-end">
         {/* FROM DATE BUTTON */}
         <div className="relative">
           <label className="block mb-2 font-medium">From Date</label>
@@ -268,83 +267,97 @@ const JobCard = () => {
       <h2>All Jobs</h2>
 
       {/* TABLE */}
-      <div className=" rounded-2xl shadow-lg  overflow-auto  lg:w-fit">
-        <table className="table-auto  rounded-xl">
-          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-base xl:text-xl px-3 text-white">
-            <tr className="">
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Job Card No
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Job Name
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Customer Name
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Date
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Status
-              </th>
-              <th className="px-2 md:px-4 py-2 whitespace-nowrap">Action</th>
-            </tr>
-          </thead>
-
-          <tbody className="text-base xl:text-base">
-            {currentItems.map((job) => (
-              <tr
-                key={job.id}
-                onClick={() => navigate(`detail/${job.id}`)}
-                className="cursor-pointer hover:bg-gray-100 text-center"
-              >
-                <td className="border px-2 md:px-4 py-2">{job.jobCardNo}</td>
-                <td className="border px-2 md:px-4 py-2">{job.jobName}</td>
-                <td className="border px-2 md:px-4 py-2">{job.customerName}</td>
-                <td className="border px-2 md:px-4 py-2">
-                  {job.jobDate
-                    ? new Date(job.jobDate.seconds * 1000)
-                        .toISOString()
-                        .split("T")[0]
-                    : ""}
-                </td>
-                <td
-                  className={`border px-2 md:px-4 py-2 ${
-                    job.jobStatus === "Completed" ||
-                    job.jobStatus === "completed"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {job.jobStatus}
-                </td>
-
-                {/* PREVENT ROW CLICK HERE */}
-                <td
-                  className="border px-2 md:px-4 py-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {job.jobStatus?.toLowerCase() !== "completed" && (
-                    <button
-                      onClick={() => navigate(`edit/${job.id}`)}
-                      className="bg-[#D2D2D2] text-primary p-1 rounded text-2xl"
-                    >
-                      <RiPencilFill />
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-
-            {jobs.length === 0 && (
+      <div className=" overflow-x-auto shadow-lg rounded-2xl md:w-fit ">
+        <div className="inline-block  align-middle">
+          <table className="table-auto w-auto">
+            <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-sm sm:text-base lg:text-lg xl:text-xl text-white">
               <tr>
-                <td colSpan="6" className="text-center p-8 text-gray-500">
-                  <div className="font-medium"> No jobs found.</div>
-                </td>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 border-r-2 whitespace-nowrap ">
+                  Job Card No
+                </th>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 border-r-2 whitespace-nowrap ">
+                  Job Name
+                </th>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 border-r-2 whitespace-nowrap ">
+                  Customer Name
+                </th>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 border-r-2 whitespace-nowrap ">
+                  Date
+                </th>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 border-r-2 whitespace-nowrap ">
+                  Status
+                </th>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 whitespace-nowra  ">
+                  Action
+                </th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody className="text-sm sm:text-base">
+              {currentItems.map((job) => (
+                <tr
+                  key={job.id}
+                  onClick={() => navigate(`detail/${job.id}`)}
+                  className="cursor-pointer hover:bg-gray-100 text-center transition-colors duration-150"
+                >
+                  <td className="border px-2 sm:px-3 md:px-4 py-2 sm:py-3 whitespace-nowrap">
+                    {job.jobCardNo}
+                  </td>
+                  <td className="border px-2 sm:px-3 md:px-4 py-2 sm:py-3">
+                    {job.jobName}
+                  </td>
+                  <td className="border px-2 sm:px-3 md:px-4 py-2 sm:py-3">
+                    {job.customerName}
+                  </td>
+                  <td className="border px-2 sm:px-3 md:px-4 py-2 sm:py-3 whitespace-nowrap">
+                    {job.jobDate
+                      ? new Date(job.jobDate.seconds * 1000)
+                          .toISOString()
+                          .split("T")[0]
+                      : ""}
+                  </td>
+                  <td
+                    className={`border px-2 sm:px-3 md:px-4 py-2 sm:py-3 whitespace-nowrap font-medium ${
+                      job.jobStatus === "Completed" ||
+                      job.jobStatus === "completed"
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {job.jobStatus}
+                  </td>
+                  <td
+                    className="border px-2 sm:px-3 md:px-4 py-2 sm:py-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {job.jobStatus?.toLowerCase() !== "completed" && (
+                      <button
+                        onClick={() => navigate(`edit/${job.id}`)}
+                        className="bg-[#D2D2D2] text-primary p-1 sm:p-1.5 rounded text-xl sm:text-2xl hover:bg-gray-300 transition-colors duration-150"
+                        aria-label="Edit job"
+                      >
+                        <RiPencilFill />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+
+              {jobs.length === 0 && (
+                <tr>
+                  <td
+                    colSpan="6"
+                    className="text-center p-6 sm:p-8 text-gray-500"
+                  >
+                    <div className="font-medium text-sm sm:text-base">
+                      No jobs found.
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
       {/* Pagination */}
       <div className="flex gap-2 mt-5">

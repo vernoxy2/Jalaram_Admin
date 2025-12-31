@@ -643,151 +643,163 @@ const StockReport = () => {
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-2xl shadow-lg">
-        <table className="table-auto w-full rounded-xl">
-          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD]  text-white">
-            <tr>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Date</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
-                Paper Code
-              </th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
-                Company
-              </th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
-                Material Type
-              </th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
-                Category
-              </th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
-                Customer
-              </th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
-                Paper Size
-              </th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-blue-900">
-                Purchased
-              </th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-blue-900">
-                Created
-              </th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap bg-orange-900">
-                Total Issue
-              </th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Used</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">Waste</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">LO</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">WIP</th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
-                Available
-              </th>
-              <th className="px-3 py-3 border-r-2 whitespace-nowrap">
-                Source Job
-              </th>
-              <th className="px-3 py-3">Source Stage</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {currentItems.map((item) => (
-              <tr className="text-center hover:bg-gray-50" key={item.id}>
-                <td className="border px-3 py-2">
-                  {item.date.toLocaleDateString("en-IN")}
-                </td>
-                <td className="border px-3 py-2  font-medium">
-                  {item.paperCode}
-                </td>
-                <td className="border px-3 py-2 ">{item.paperProductCode}</td>
-                <td className="border px-3 py-2 ">{item.jobPaper}</td>
-                <td className="border px-3 py-2">
-                  <span
-                    className={`px-2 py-1 rounded-full  font-semibold ${
-                      item.materialCategory === "RAW"
-                        ? "bg-blue-200 text-blue-800"
-                        : item.materialCategory === "LO"
-                        ? "bg-yellow-200 text-yellow-800"
-                        : "bg-purple-200 text-purple-800"
-                    }`}
-                  >
-                    {item.materialCategory}
-                  </span>
-                </td>
-                <td className="border px-3 py-2 ">{item.customerName}</td>
-                <td className="border px-3 py-2 ">{item.paperSize}</td>
-                <td className="border px-3 py-2  font-semibold bg-blue-50">
-                  {item.purchased > 0 ? formatNumber(item.purchased) : "-"}
-                </td>
-                <td className="border px-3 py-2 font-semibold bg-blue-50">
-                  {item.created > 0 ? formatNumber(item.created) : "-"}
-                </td>
-                <td className="border px-3 py-2 font-semibold bg-orange-50 text-orange-600">
-                  {formatNumber(item.totalIssue)}
-                </td>
-                <td className="border px-3 py-2 text-green-600">
-                  {formatNumber(item.used)}
-                </td>
-                <td className="border px-3 py-2 text-red-600">
-                  {formatNumber(item.waste)}
-                </td>
-                <td className="border px-3 py-2 text-yellow-600">
-                  {formatNumber(item.lo)}
-                </td>
-                <td className="border px-3 py-2 text-purple-600">
-                  {formatNumber(item.wip)}
-                </td>
-                <td className="border px-3 py-2 font-bold text-indigo-600">
-                  {formatNumber(item.available)}
-                </td>
-                <td className="border px-3 py-2 ">{item.sourceJobCardNo}</td>
-                <td className="border px-3 py-2 capitalize">
-                  {item.sourceStage}
-                </td>
-              </tr>
-            ))}
-
-            {currentItems.length === 0 && (
+      <div className="overflow-x-auto rounded-2xl shadow-lg ">
+        <div className="max-w-1 inline-block align-middle">
+          <table className="table-auto w-full ">
+            <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD]  text-white">
               <tr>
-                <td colSpan="17" className="text-center p-4 text-gray-500">
-                  No stock data found
-                </td>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  Date
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  Paper Code
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  Company
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  Material Type
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  Category
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  Customer
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  Paper Size
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal bg-blue-900">
+                  Purchased
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal bg-blue-900">
+                  Created
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal bg-orange-900">
+                  Total Issue
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  Used
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  Waste
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  LO
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  WIP
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  Available
+                </th>
+                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
+                  Source Job
+                </th>
+                <th className="px-3 py-3">Source Stage</th>
               </tr>
-            )}
-          </tbody>
+            </thead>
 
-          <tfoot className="bg-gray-100 font-bold">
-            <tr className="text-center">
-              <td colSpan="7" className="border px-3 py-3 text-right">
-                TOTALS:
-              </td>
-              <td className="border px-3 py-3 text-blue-600 bg-blue-50">
-                {formatNumber(summaryTotals.purchased)}
-              </td>
-              <td className="border px-3 py-3 text-blue-600 bg-blue-50">
-                {formatNumber(summaryTotals.created)}
-              </td>
-              <td className="border px-3 py-3 text-orange-600 bg-orange-50">
-                {formatNumber(summaryTotals.totalIssue)}
-              </td>
-              <td className="border px-3 py-3 text-green-600">
-                {formatNumber(summaryTotals.used)}
-              </td>
-              <td className="border px-3 py-3 text-red-600">
-                {formatNumber(summaryTotals.waste)}
-              </td>
-              <td className="border px-3 py-3 text-yellow-600">
-                {formatNumber(summaryTotals.loCreated)}
-              </td>
-              <td className="border px-3 py-3 text-purple-600">
-                {formatNumber(summaryTotals.wipCreated)}
-              </td>
-              <td className="border px-3 py-3 text-indigo-600">
-                {formatNumber(summaryTotals.available)}
-              </td>
-              <td colSpan="2" className="border"></td>
-            </tr>
-          </tfoot>
-        </table>
+            <tbody>
+              {currentItems.map((item) => (
+                <tr className="text-center hover:bg-gray-50" key={item.id}>
+                  <td className="border px-3 py-2">
+                    {item.date.toLocaleDateString("en-IN")}
+                  </td>
+                  <td className="border px-3 py-2  font-medium">
+                    {item.paperCode}
+                  </td>
+                  <td className="border px-3 py-2 ">{item.paperProductCode}</td>
+                  <td className="border px-3 py-2 ">{item.jobPaper}</td>
+                  <td className="border px-3 py-2">
+                    <span
+                      className={`px-2 py-1 rounded-full  font-semibold ${
+                        item.materialCategory === "RAW"
+                          ? "bg-blue-200 text-blue-800"
+                          : item.materialCategory === "LO"
+                          ? "bg-yellow-200 text-yellow-800"
+                          : "bg-purple-200 text-purple-800"
+                      }`}
+                    >
+                      {item.materialCategory}
+                    </span>
+                  </td>
+                  <td className="border px-3 py-2 ">{item.customerName}</td>
+                  <td className="border px-3 py-2 ">{item.paperSize}</td>
+                  <td className="border px-3 py-2  font-semibold bg-blue-50">
+                    {item.purchased > 0 ? formatNumber(item.purchased) : "-"}
+                  </td>
+                  <td className="border px-3 py-2 font-semibold bg-blue-50">
+                    {item.created > 0 ? formatNumber(item.created) : "-"}
+                  </td>
+                  <td className="border px-3 py-2 font-semibold bg-orange-50 text-orange-600">
+                    {formatNumber(item.totalIssue)}
+                  </td>
+                  <td className="border px-3 py-2 text-green-600">
+                    {formatNumber(item.used)}
+                  </td>
+                  <td className="border px-3 py-2 text-red-600">
+                    {formatNumber(item.waste)}
+                  </td>
+                  <td className="border px-3 py-2 text-yellow-600">
+                    {formatNumber(item.lo)}
+                  </td>
+                  <td className="border px-3 py-2 text-purple-600">
+                    {formatNumber(item.wip)}
+                  </td>
+                  <td className="border px-3 py-2 font-bold text-indigo-600">
+                    {formatNumber(item.available)}
+                  </td>
+                  <td className="border px-3 py-2 ">{item.sourceJobCardNo}</td>
+                  <td className="border px-3 py-2 capitalize">
+                    {item.sourceStage}
+                  </td>
+                </tr>
+              ))}
+
+              {currentItems.length === 0 && (
+                <tr>
+                  <td colSpan="17" className="text-center p-4 text-gray-500">
+                    No stock data found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+
+            <tfoot className="bg-gray-100 font-bold">
+              <tr className="text-center">
+                <td colSpan="7" className="border px-3 py-3 text-right">
+                  TOTALS:
+                </td>
+                <td className="border px-3 py-3 text-blue-600 bg-blue-50">
+                  {formatNumber(summaryTotals.purchased)}
+                </td>
+                <td className="border px-3 py-3 text-blue-600 bg-blue-50">
+                  {formatNumber(summaryTotals.created)}
+                </td>
+                <td className="border px-3 py-3 text-orange-600 bg-orange-50">
+                  {formatNumber(summaryTotals.totalIssue)}
+                </td>
+                <td className="border px-3 py-3 text-green-600">
+                  {formatNumber(summaryTotals.used)}
+                </td>
+                <td className="border px-3 py-3 text-red-600">
+                  {formatNumber(summaryTotals.waste)}
+                </td>
+                <td className="border px-3 py-3 text-yellow-600">
+                  {formatNumber(summaryTotals.loCreated)}
+                </td>
+                <td className="border px-3 py-3 text-purple-600">
+                  {formatNumber(summaryTotals.wipCreated)}
+                </td>
+                <td className="border px-3 py-3 text-indigo-600">
+                  {formatNumber(summaryTotals.available)}
+                </td>
+                <td colSpan="2" className="border"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
 
       {/* Pagination */}
