@@ -427,7 +427,9 @@ const MaterialIssueForm = () => {
     if (rollsValue < 0) return;
 
     if (roll && rollsValue > roll.currentAvailableRolls) {
-      alert(`Issued rolls cannot exceed available rolls (${roll.currentAvailableRolls})`);
+      alert(
+        `Issued rolls cannot exceed available rolls (${roll.currentAvailableRolls})`
+      );
       return;
     }
 
@@ -837,13 +839,11 @@ const MaterialIssueForm = () => {
                   Leftover (LO)
                 </h2>
 
-                <PrimaryInput
-                  label="Search LO materials (Paper Code, Available Meter, Source Job, Customer, Date...)"
+                <SearchBar
                   value={searchLO}
                   onChange={setSearchLO}
-                  // placeholder="Search LO materials (Paper Code, Available Meter, Source Job, Customer, Date...)"
+                  placeholder="Search LO materials (Paper Code, Available Meter, Source Job, Customer, Date...)"
                 />
-
                 <MaterialTable
                   title="Leftover (LO)"
                   data={filteredLO}
