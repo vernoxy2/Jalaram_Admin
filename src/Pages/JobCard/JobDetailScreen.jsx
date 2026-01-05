@@ -128,229 +128,478 @@ const JobDetailsScreen = () => {
     return `${hours}h ${minutes}m ${seconds}s`;
   };
 
+
+  // Updated generateHTMLContent function with modified material usage display
+
   const generateHTMLContent = () => {
     const slittingRows =
       order.slittingData && order.slittingData.length > 0
         ? order.slittingData
             .map(
               (item) => `
-            <tr>
-              <td>${item.A || ""}</td>
-              <td>${item.B || ""}</td>
-              <td>${item.C || ""}</td>
-            </tr>`
+      <tr>
+        <td>${item.A || ""}</td>
+        <td>${item.B || ""}</td>
+        <td>${item.C || ""}</td>
+      </tr>`
             )
             .join("")
         : `<tr><td colspan="3">No data available</td></tr>`;
 
-    const allocatedMaterialsHTML = allocatedMaterials
-      .map(
-        (material, i) => `
-        <div class="row">
-          <div class="col">
-            <span class="label">Paper Product Code ${i + 1}:</span>
-            <span class="input">${safeRender(material.code)}</span>
-          </div>
-          <div class="col">
-            <span class="label">Paper Product No ${i + 1}:</span>
-            <span class="input">${material.number || ""}</span>
-          </div>
-        </div>
-        <div class="row">
-          <div class="col">
-            <span class="label">Allocated Qty ${i + 1}:</span>
-            <span class="input">${material.allocatedQty}m</span>
-          </div>
-          <div class="col">
-            <span class="label">Material Category ${i + 1}:</span>
-            <span class="input">${material.materialCategory}</span>
-          </div>
-        </div>
-      `
-      )
-      .join("");
+    // ✅ REMOVED: allocatedMaterialsHTML - No longer displayed above the table
+
+    // ✅ UPDATED: Generate material usage table with allocatedQty and materialCategory
+    const generateStageUsageTable = (stageName) => {
+      if (
+        !order.materialUsageTracking ||
+        order.materialUsageTracking.length === 0
+      ) {
+        return "";
+      }
+
+      const stageKey = stageName.toLowerCase();
+      const isPrintingStage = stageKey === "printing";
+
+      const rows = order.materialUsageTracking
+        .map((material) => {
+          const stageData = material[stageKey];
+          if (!stageData) return "";
+
+          const paperCode = material.paperProductCode || "N/A";
+          const paperNo = material.paperProductNo || "N/A";
+
+          // ✅ Only get allocated and category for printing stage
+          const allocated = isPrintingStage
+            ? material.printing?.allocated || 0
+            : null;
+          const materialCategory = isPrintingStage
+            ? material.printing?.materialCategory || "N/A"
+            : null;
+
+          return `
+        <tr>
+          <td>${paperCode} (${paperNo})</td>
+          ${isPrintingStage ? `<td>${allocated}m</td>` : ""}
+          ${isPrintingStage ? `<td>${materialCategory}</td>` : ""}
+          <td>${stageData.used || 0}</td>
+          <td>${stageData.waste || 0}</td>
+          <td>${stageData.leftover || 0}</td>
+          <td>${stageData.wip || 0}</td>
+        </tr>
+      `;
+        })
+        .filter(Boolean)
+        .join("");
+
+      if (!rows) return "";
+
+      return `
+    <div>
+      <div class="usage-title">Material Usage:</div>
+      <table class="usage-table">
+        <thead>
+          <tr>
+            <th>Material</th>
+            ${isPrintingStage ? "<th>Allocated (m)</th>" : ""}
+            ${isPrintingStage ? "<th>Category</th>" : ""}
+            <th>Used (m)</th>
+            <th>Waste (m)</th>
+            <th>Leftover (m)</th>
+            <th>WIP (m)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+    };
 
     const htmlContent = `
-      <html>
-      <head>
-          <style>
-          body { font-family: Arial, sans-serif; }
-          h1 { text-align: center; color: #3668B1; }
-          .section { border: 2px solid #3668B1; border-radius: 8px; margin-bottom: 18px; padding: 10px 15px; }
-          .section-title { background: #3668B1; color: #fff; font-weight: bold; padding: 3px 10px; border-radius: 5px; display: inline-block; margin-bottom: 10px; }
-          .row { display: flex; flex-wrap: wrap; margin-bottom: 8px; }
-          .col { flex: 1; min-width: 180px; margin-right: 10px; }
-          .label { font-weight: bold; }
-          .input { display: inline-block; min-width: 120px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th, td { border: 1px solid #3668B1; padding: 4px 8px; text-align: center; }
-          .small-table td { min-width: 40px; }
-          .color-seq-table { margin-bottom: 15px; }
-          .time-row {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              gap: 20px;
-              flex-wrap: nowrap;
-            }
-            .time-row .col {
-              flex: 0 0 auto;
-              white-space: nowrap;
-            }
-            .time-row .col:last-child {
-              margin-left: auto;
-            }
-        </style>
-      </head>
-      <body>    
-        <div class="section">
-          <div class="section-title">Admin</div>
-          <div class="row">
-                <div class="col"><span class="label">PO No.:</span> <span class="input">${
-                  order.poNo || ""
-                }</span></div>
-                <div class="col"><span class="label">Job Date:</span> <span class="input">${jobDateFormatted}</span></div>
-          </div>
-          <div class="row">
-                <div class="col"><span class="label">Customer Name:</span> <span class="input">${
-                  order.customerName || ""
-                }</span></div>
-                  <div class="col"><span class="label">Label Type:</span> <span class="input">${
-                    order.jobType || ""
-                  }</span></div>
-          </div>
-          <div class="row">
-                <div class="col"><span class="label">Job Card no:</span> <span class="input">${
-                  order.jobCardNo || ""
-                }</span></div>
-                <div class="col"><span class="label">Job Name:</span> <span class="input">${
-                  order.jobName || ""
-                }</span></div>
-          </div>
-          <div class="row">
-              <div class="col"><span class="label">Job Original Size:</span> <span class="input">${
-                order.jobSize || ""
+  <html>
+  <head>
+      <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body { 
+        font-family: Arial, sans-serif;
+        padding: 10px;
+      }
+      
+      h1 { 
+        text-align: center; 
+        color: #3668B1;
+        margin-bottom: 20px;
+        font-size: 24px;
+        page-break-after: avoid;
+      }
+      
+      .section { 
+        border: 2px solid #3668B1; 
+        border-radius: 8px; 
+        margin-bottom: 15px; 
+        padding: 12px 15px 15px 15px;
+        page-break-inside: avoid;
+      }
+      
+      .section.punching-section {
+        margin-top: 20px;
+      }
+      
+      .section.slitting-section {
+        margin-top: 20px;
+      }
+      
+      .section-title { 
+        background: #3668B1; 
+        color: #fff; 
+        font-weight: bold; 
+        padding: 6px 14px; 
+        border-radius: 5px; 
+        display: inline-block; 
+        margin-bottom: 12px;
+        font-size: 14px !important;
+      }
+      
+      .row { 
+        display: flex; 
+        flex-wrap: wrap; 
+        margin-bottom: 8px; 
+      }
+      
+      .col { 
+        flex: 1; 
+        min-width: 180px; 
+        margin-right: 10px; 
+      }
+      
+      .label { 
+        font-weight: bold;
+        font-size: 12px !important;
+      }
+      
+      .input { 
+        display: inline-block; 
+        min-width: 120px;
+        font-size: 12px !important;
+      }
+      
+      table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 8px; 
+      }
+      
+      th, td { 
+        border: 1px solid #3668B1; 
+        padding: 5px 8px; 
+        text-align: center;
+        font-size: 11px !important;
+      }
+      
+      .small-table td { 
+        min-width: 40px; 
+      }
+      
+      .color-seq-table { 
+        margin-bottom: 12px; 
+      }
+      
+      .time-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: nowrap;
+      }
+      
+      .time-row .col {
+        flex: 0 0 auto;
+        white-space: nowrap;
+      }
+      
+      .time-row .col:last-child {
+        margin-left: auto;
+      }
+    
+      /* Material Usage Styles */
+      .usage-section {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 2px solid #3668B1;
+        page-break-inside: avoid;
+      }
+      
+      .usage-title {
+        font-weight: bold;
+        margin-bottom: 6px;
+        color: #3668B1;
+        font-size: 13px;
+        page-break-after: avoid;
+      }
+      
+      .usage-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 6px;
+        page-break-inside: auto;
+      }
+      
+      .usage-table th {
+        background: #3668B1;
+        color: white;
+        padding: 6px 4px;
+        font-size: 10px;
+        font-weight: bold;
+      }
+      
+      .usage-table td {
+        padding: 5px 4px;
+        font-size: 9px;
+        text-align: center;
+        border: 1px solid #3668B1;
+      }
+      
+      .usage-table tbody tr:nth-child(even) {
+        background: #f5f8fc;
+      }
+      
+      .usage-table tbody tr:nth-child(odd) {
+        background: #ffffff;
+      }
+
+      .usage-table thead {
+        display: table-header-group;
+        page-break-after: avoid;
+      }
+      
+      .usage-table tr {
+        page-break-inside: avoid;
+      }
+
+      /* Print-specific rules */
+      @media print {
+        body {
+          padding: 5px;
+        }
+        
+        h1 {
+          page-break-after: avoid;
+        }
+        
+        .section {
+          page-break-inside: avoid;
+          margin-bottom: 10px;
+        }
+        
+        .section.punching-section {
+          page-break-before: always !important;
+        }
+        
+        .section.allow-break {
+          page-break-inside: auto;
+        }
+        
+        .usage-section {
+          page-break-before: auto;
+          page-break-inside: avoid;
+        }
+        
+        .usage-table thead {
+          display: table-header-group;
+        }
+        
+        .usage-table tbody tr {
+          page-break-inside: avoid;
+        }
+        
+        .usage-table thead tr,
+        .usage-table tbody tr:first-child {
+          page-break-after: avoid;
+        }
+      }
+
+      @page {
+        margin: 15mm;
+      }
+      
+      .page-break {
+        display: block;
+        page-break-before: always;
+        page-break-after: always;
+        break-before: page;
+        break-after: page;
+        height: 0;
+        margin: 0;
+        padding: 0;
+        border: none;
+      }
+    </style>
+  </head>
+  <body>    
+    <h1>Job Card Report</h1>
+    
+    <div class="section">
+      <div class="section-title">Admin</div>
+      <div class="row">
+            <div class="col"><span class="label">PO No.:</span> <span class="input">${
+              order.poNo || ""
+            }</span></div>
+            <div class="col"><span class="label">Job Date:</span> <span class="input">${jobDateFormatted}</span></div>
+      </div>
+      <div class="row">
+            <div class="col"><span class="label">Customer Name:</span> <span class="input">${
+              order.customerName || ""
+            }</span></div>
+              <div class="col"><span class="label">Label Type:</span> <span class="input">${
+                order.jobType || ""
               }</span></div>
-              <div class="col"><span class="label">Job Qty:</span> <span class="input">${
-                order.jobQty || ""
-              }</span></div>
-          </div>        
-          <div class="row">
-              <div class="col"><span class="label">Job Creation Time:</span> <span class="input">${jobCreationTime}</span></div>  
-              <div class="col"><span class="label">Teeth Size:</span> <span class="input">${safeRender(
-                order.teethSize
-              )}</span></div>           
-          </div>          
-            <div class="row time-row">
-            <div class="col"><span class="label">Start time:</span> <span class="input">${startTimeFormatted}</span></div>
-            <div class="col"><span class="label">End time:</span> <span class="input">${endTimeFormatted}</span></div>
-            <div class="col"><span class="label">Total time:</span> <span class="input">${totalTimeFormatted}</span></div>
-          </div>
-        </div>
+      </div>
+      <div class="row">
+            <div class="col"><span class="label">Job Card no:</span> <span class="input">${
+              order.jobCardNo || ""
+            }</span></div>
+            <div class="col"><span class="label">Job Name:</span> <span class="input">${
+              order.jobName || ""
+            }</span></div>
+      </div>
+      <div class="row">
+          <div class="col"><span class="label">Job Original Size:</span> <span class="input">${
+            order.jobSize || ""
+          }</span></div>
+          <div class="col"><span class="label">Job Qty:</span> <span class="input">${
+            order.jobQty || ""
+          }</span></div>
+      </div>        
+      <div class="row">
+          <div class="col"><span class="label">Job Creation Time:</span> <span class="input">${jobCreationTime}</span></div>  
+          <div class="col"><span class="label">Teeth Size:</span> <span class="input">${safeRender(
+            order.teethSize
+          )}</span></div>           
+      </div>          
+        <div class="row time-row">
+        <div class="col"><span class="label">Start time:</span> <span class="input">${startTimeFormatted}</span></div>
+        <div class="col"><span class="label">End time:</span> <span class="input">${endTimeFormatted}</span></div>
+        <div class="col"><span class="label">Total time:</span> <span class="input">${totalTimeFormatted}</span></div>
+      </div>
+    </div>
 
-        <div class="section">
-          <div class="section-title">Printing</div>
-          <div class="row">
-            <div class="col"><span class="label">Printing Start Time:</span> <span class="input">${
-              printingStartTimeFormatted || ""
-            }</span></div>
-            <div class="col"><span class="label">Printing End Time:</span> <span class="input">${
-              printingEndTimeFormatted || ""
-            }</span></div>
-          </div>
-          <div class="row"><span class="label">Color Seq.</span></div>
-          
-          <table class="small-table color-seq-table">
-              <tr>
-                <td>C : ${order.colorAniloxValues?.C?.value || ""}</td>
-                <td>M : ${order.colorAniloxValues?.M?.value || ""}</td>
-                <td>Y : ${order.colorAniloxValues?.Y?.value || ""}</td>
-                <td>K : ${order.colorAniloxValues?.K?.value || ""}</td>
-              </tr>
-              <tr>
-                <td>Sp1 : ${order.colorAniloxValues?.Sq1?.value || ""}</td>
-                <td>Sp2 : ${order.colorAniloxValues?.Sq2?.value || ""}</td>    
-                <td>Sp3 : ${order.colorAniloxValues?.Sq3?.value || ""}</td>
-                <td>Sp4 : ${order.colorAniloxValues?.Sq4?.value || ""}</td>
-              </tr>
-            </table>
+    <div id="printing-section" class="section allow-break">
+      <div class="section-title">Printing</div>
+      <div class="row">
+        <div class="col"><span class="label">Printing Start Time:</span> <span class="input">${
+          order.jobType === "Plain" ? "" : printingStartTimeFormatted || ""
+        }</span></div>
+        <div class="col"><span class="label">Printing End Time:</span> <span class="input">${
+          printingEndTimeFormatted || ""
+        }</span></div>
+      </div>
+      <div class="row"><span class="label">Color Seq.</span></div>
+      
+      <table class="small-table color-seq-table">
+          <tr>
+            <td>C : ${order.colorAniloxValues?.C?.value || ""}</td>
+            <td>M : ${order.colorAniloxValues?.M?.value || ""}</td>
+            <td>Y : ${order.colorAniloxValues?.Y?.value || ""}</td>
+            <td>K : ${order.colorAniloxValues?.K?.value || ""}</td>
+          </tr>
+          <tr>
+            <td>Sp1 : ${order.colorAniloxValues?.Sq1?.value || ""}</td>
+            <td>Sp2 : ${order.colorAniloxValues?.Sq2?.value || ""}</td>    
+            <td>Sp3 : ${order.colorAniloxValues?.Sq3?.value || ""}</td>
+            <td>Sp4 : ${order.colorAniloxValues?.Sq4?.value || ""}</td>
+          </tr>
+        </table>
 
-          <div class="row">
-                <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
-                  order.runningMtr || ""
-                }</span></div>
-                <div class="col"><span class="label">Tooling:</span> <span class="input">${
-                  order.tooling || ""
-                }</span></div>
+      <div class="row">
+             <div class="col">
+            <span class="label">Printing Colors:</span>
+            <span class="input">
+              ${
+                order.printingColors && order.printingColors.length > 0
+                  ? order.printingColors.join(", ")
+                  : ""
+              }
+            </span>
           </div>
+            <div class="col"><span class="label">Tooling:</span> <span class="input">${
+              order.tooling || ""
+            }</span></div>
+      </div>   
 
-          ${allocatedMaterialsHTML}
+     ${generateStageUsageTable("printing")}
+    </div>
 
-           <div class="row">
-              <div class="col">
-                <span class="label">Printing Colors:</span>
-                <span class="input">
-                  ${
-                    order.printingColors && order.printingColors.length > 0
-                      ? order.printingColors.join(", ")
-                      : ""
-                  }
-                </span>
-              </div>
-         </div>
-        </div>
+    <div class="page-break"></div>
+    
+    <div id="punching-section" class="section allow-break punching-section">
+      <div class="section-title">Punching</div>
+      <div class="row">
+        <div class="col"><span class="label">Punching Start Time:</span> <span class="input">${
+          punchingStartTimeFormatted || ""
+        }</span></div>
+        <div class="col"><span class="label">Punching End Time:</span> <span class="input">${
+          punchingEndTimeFormatted || ""
+        }</span></div>
+      </div>
+      <div class="row">
+        <div class="col"><span class="label">Paper Code:</span> <span class="input">${
+          order.paperCode || ""
+        }</span></div>
+        <div class="col"><span class="label">Running Mtrs:</span> <span class="input">
+        </span></div>
+      </div>
 
-        <div class="section">
-          <div class="section-title">Punching</div>
-          <div class="row">
-            <div class="col"><span class="label">Punching Start Time:</span> <span class="input">${
-              punchingStartTimeFormatted || ""
-            }</span></div>
-            <div class="col"><span class="label">Punching End Time:</span> <span class="input">${
-              punchingEndTimeFormatted || ""
-            }</span></div>
-          </div>
-          <div class="row">
-            <div class="col"><span class="label">Paper Code:</span> <span class="input">${
-              order.paperCode || ""
-            }</span></div>
-            <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
-              order.runningMtr || ""
-            }</span></div>
-          </div>
-        </div>
+      ${generateStageUsageTable("punching")}
+    </div>
 
-        <div class="section">
-          <div class="section-title">Slitting</div>
-          <div class="row">
-            <div class="col"><span class="label">Slitting Start Time:</span> <span class="input">${
-              slittingStartTimeFormatted || ""
-            }</span></div>
-            <div class="col"><span class="label">Slitting End Time:</span> <span class="input">${
-              slittingEndTimeFormatted || ""
-            }</span></div>
-          </div>
-          <div class="subsection">
-            <table border="1">
-              <thead>
-                <tr>
-                  <th>Labels</th>
-                  <th>No of Rolls</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${slittingRows}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
+    <div id="slitting-section" class="section allow-break slitting-section">
+      <div class="section-title">Slitting</div>
+      <div class="row">
+        <div class="col"><span class="label">Slitting Start Time:</span> <span class="input">${
+          slittingStartTimeFormatted || ""
+        }</span></div>
+        <div class="col"><span class="label">Slitting End Time:</span> <span class="input">${
+          slittingEndTimeFormatted || ""
+        }</span></div>
+      </div>
+      <div class="subsection">
+        <table border="1">
+          <thead>
+            <tr>
+              <th>Labels</th>
+              <th>No of Rolls</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${slittingRows}
+          </tbody>
+        </table>
+      </div>
+
+      ${generateStageUsageTable("slitting")}
+    </div>
+  </body>
+  </html>
+`;
 
     return htmlContent;
   };
+  //   const captureSection = async (element, pdf) => {
+  //   const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+  //   const imgData = canvas.toDataURL("image/png");
+
+  //   const pdfWidth = pdf.internal.pageSize.getWidth();
+  //   const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+  //   pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+  // };
 
   const generatePDF = async () => {
     try {
@@ -428,49 +677,174 @@ const JobDetailsScreen = () => {
     try {
       const htmlContent = generateHTMLContent();
 
+      // Create container
       const container = document.createElement("div");
       container.style.position = "absolute";
       container.style.left = "-9999px";
       container.innerHTML = htmlContent;
       document.body.appendChild(container);
 
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
+      // Wait for content to render
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      document.body.removeChild(container);
-
-      const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      let heightLeft = pdfHeight;
-      let position = 0;
+      // Helper function to capture and add a section to PDF
+      const captureSection = async (element, addNewPage = false) => {
+        if (!element) {
+          console.warn("Element not found for capture");
+          return;
+        }
 
-      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pdf.internal.pageSize.getHeight();
+        if (addNewPage) {
+          pdf.addPage();
+        }
 
-      while (heightLeft >= 0) {
-        position = heightLeft - pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pdf.internal.pageSize.getHeight();
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        });
+
+        const imgData = canvas.toDataURL("image/png");
+        const imgWidth = pdfWidth;
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        // If content is taller than one page, split it across multiple pages
+        if (imgHeight > pdfHeight) {
+          let position = 0;
+          let heightLeft = imgHeight;
+
+          while (heightLeft > 0) {
+            if (position > 0) {
+              pdf.addPage();
+            }
+            pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+            position -= pdfHeight;
+            heightLeft -= pdfHeight;
+          }
+        } else {
+          pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+        }
+      };
+
+      // Get all sections
+      const h1Element = container.querySelector("h1");
+      const adminSection = container.querySelector(".section");
+      const printingSection = container.querySelector("#printing-section");
+      const punchingSection = container.querySelector("#punching-section");
+      const slittingSection = container.querySelector("#slitting-section");
+
+      // Check if required elements exist
+      if (!h1Element || !adminSection || !printingSection) {
+        throw new Error("Required sections not found in HTML");
       }
 
+      // PAGE 1: Title + Admin + Printing
+      const page1Container = document.createElement("div");
+      page1Container.appendChild(h1Element.cloneNode(true));
+      page1Container.appendChild(adminSection.cloneNode(true));
+      page1Container.appendChild(printingSection.cloneNode(true));
+
+      // Temporarily add to container for rendering
+      const tempDiv = document.createElement("div");
+      tempDiv.style.position = "absolute";
+      tempDiv.style.left = "-9999px";
+      tempDiv.innerHTML = page1Container.innerHTML;
+      document.body.appendChild(tempDiv);
+
+      await captureSection(tempDiv, false);
+      document.body.removeChild(tempDiv);
+
+      // PAGE 2: Punching (FORCED NEW PAGE)
+      if (punchingSection) {
+        // Add spacing div before punching
+        const spacerDiv = document.createElement("div");
+        spacerDiv.style.height = "20px";
+
+        const page2Container = document.createElement("div");
+        page2Container.appendChild(spacerDiv);
+        page2Container.appendChild(punchingSection.cloneNode(true));
+
+        const tempDiv2 = document.createElement("div");
+        tempDiv2.style.position = "absolute";
+        tempDiv2.style.left = "-9999px";
+        tempDiv2.innerHTML = page2Container.innerHTML;
+        document.body.appendChild(tempDiv2);
+
+        await captureSection(tempDiv2, true);
+        document.body.removeChild(tempDiv2);
+      }
+
+      // Check if Slitting fits on same page or needs new page
+      if (punchingSection && slittingSection) {
+        // We need to capture the full page 2 content (spacer + punching)
+        const spacerDiv = document.createElement("div");
+        spacerDiv.style.height = "20px";
+
+        const page2Container = document.createElement("div");
+        page2Container.appendChild(spacerDiv.cloneNode(true));
+        page2Container.appendChild(punchingSection.cloneNode(true));
+
+        const tempPage2 = document.createElement("div");
+        tempPage2.style.position = "absolute";
+        tempPage2.style.left = "-9999px";
+        tempPage2.innerHTML = page2Container.innerHTML;
+        document.body.appendChild(tempPage2);
+
+        const page2Canvas = await html2canvas(tempPage2, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        });
+        const page2Height = (page2Canvas.height * pdfWidth) / page2Canvas.width;
+        document.body.removeChild(tempPage2);
+
+        const slittingCanvas = await html2canvas(slittingSection, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        });
+        const slittingHeight =
+          (slittingCanvas.height * pdfWidth) / slittingCanvas.width;
+
+        // Add 7mm spacing between sections
+        const spacingMM = 7;
+
+        // If both sections fit on one page together (with spacing)
+        if (page2Height + slittingHeight + spacingMM <= pdfHeight) {
+          const slittingImgData = slittingCanvas.toDataURL("image/png");
+          pdf.addImage(
+            slittingImgData,
+            "PNG",
+            0,
+            page2Height + spacingMM,
+            pdfWidth,
+            slittingHeight
+          );
+        } else {
+          // Otherwise, Slitting goes on a new page
+          await captureSection(slittingSection, true);
+        }
+      } else if (slittingSection) {
+        // If no punching section, add slitting on new page
+        await captureSection(slittingSection, true);
+      }
+
+      // Clean up
+      document.body.removeChild(container);
+
+      // Generate filename
       const now = new Date();
       const shortStamp = `${now.getHours()}${now.getMinutes()}`;
-
       const cleanCustomerName = (order.customerName || "Customer")
         .replace(/[^a-zA-Z0-9]/g, "_")
         .substring(0, 10);
-
       const cleanJobName = (order.jobName || "Job")
         .replace(/[^a-zA-Z0-9]/g, "_")
         .substring(0, 12);
-
       const cleanJobCardNo = (order.jobCardNo || "0000")
         .replace(/[^a-zA-Z0-9]/g, "")
         .substring(0, 8);
@@ -482,10 +856,9 @@ const JobDetailsScreen = () => {
       console.log("✅ PDF saved:", fileName);
     } catch (error) {
       console.error("PDF Generation Error:", error);
-      alert("Failed to generate or save PDF");
+      alert("Failed to generate or save PDF: " + error.message);
     }
   };
-
   if (loading)
     return <div className="p-10 text-center text-lg">Loading...</div>;
   if (!order)
