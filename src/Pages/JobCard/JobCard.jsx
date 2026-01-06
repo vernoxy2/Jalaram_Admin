@@ -267,9 +267,9 @@ const JobCard = () => {
       <h2>All Jobs</h2>
 
       {/* TABLE */}
-      <div className=" overflow-x-auto shadow-lg rounded-2xl md:w-fit ">
-        <div className="inline-block  align-middle">
-          <table className="table-auto w-auto">
+      <div className=" overflow-x-auto shadow-lg rounded-2xl  ">
+        <div className="inline-block  align-middle w-full max-w-1 lg:max-w-none">
+          <table className="table-auto w-full">
             <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-sm sm:text-base lg:text-lg xl:text-xl text-white">
               <tr>
                 <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 border-r-2 whitespace-nowrap ">
