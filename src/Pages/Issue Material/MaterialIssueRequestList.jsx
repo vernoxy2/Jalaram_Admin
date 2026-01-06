@@ -268,11 +268,11 @@ const MaterialIssueRequestList = () => {
                     <td className="border px-4 py-2">{issuedMeter}</td>
                     <td className="border px-4 py-2">{item.createdBy}</td>
 
-                    Action Column
+                    {/* Action Column */}
                     <td className="border px-4 py-2">
                       {shouldShowIssueButton(item) ? (
                         <button
-                          className="bg-[#D2D2D2]/40 border hover:border-primary font-semibold text-primary px-3 py-1 rounded-lg"
+                          className="bg-[#D2D2D2]/40 border hover:border-primary font-semibold text-primary px-3 py-1 rounded-lg whitespace-nowrap"
                           onClick={() => navigate(`/issue_material/${item.id}`)}
                         >
                           Issue Now

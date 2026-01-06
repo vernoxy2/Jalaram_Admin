@@ -1,19 +1,25 @@
 import React, { useState, useEffect, useRef } from "react";
-import logo from "../../assets/Logo.svg";
 import Right from "../../assets/Right.svg";
 import { BsPersonFill } from "react-icons/bs";
 import { IoMdNotifications } from "react-icons/io";
 import { IoMenu } from "react-icons/io5";
+import { BiLogOut, BiUser, BiKey } from "react-icons/bi";
 import { Link, useNavigate } from "react-router-dom";
 import { collection, query, onSnapshot, orderBy, doc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
+import logo from "../../assets/Logo.svg";
 
 const Header = ({ toggleMobileSidebar }) => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const notificationRef = useRef(null);
+  const userMenuRef = useRef(null);
+
+  // Get user email from localStorage (initialize state directly)
+  const [userEmail] = useState(() => localStorage.getItem("userEmail") || "User");
 
   useEffect(() => {
     // Listen to all material requests in real-time
@@ -50,6 +56,9 @@ const Header = ({ toggleMobileSidebar }) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setShowNotifications(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -58,6 +67,9 @@ const Header = ({ toggleMobileSidebar }) => {
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userEmail");
     navigate("/login");
   };
 
@@ -97,8 +109,7 @@ const Header = ({ toggleMobileSidebar }) => {
           aria-label="Menu"
           onClick={toggleMobileSidebar}
         />
-
-        {/* Logo and Brand */}
+             {/* Logo and Brand */}
         <Link to="/" className="flex items-center space-x-2 max-w-full z-10">
           <img
             src={logo}
@@ -120,7 +131,7 @@ const Header = ({ toggleMobileSidebar }) => {
         <div className="relative" ref={notificationRef}>
           <button
             aria-label="Notifications"
-            className="bg-[#3668B1] rounded-full text-white w-10 md:w-12 h-10 md:h-12 flex items-center justify-center relative"
+            className="bg-[#3668B1] rounded-full text-white w-10 md:w-12 h-10 md:h-12 flex items-center justify-center relative hover:bg-[#2a5492] transition-colors"
             onClick={() => setShowNotifications(!showNotifications)}
           >
             <IoMdNotifications className="md:text-2xl" />
@@ -178,14 +189,40 @@ const Header = ({ toggleMobileSidebar }) => {
           )}
         </div>
 
-        {/* Profile / Logout */}
-        <button
-          onClick={handleLogout}
-          aria-label="Logout"
-          className="bg-[#3668B1] rounded-full text-white w-10 md:w-12 h-10 md:h-12 flex items-center justify-center"
-        >
-          <BsPersonFill className="md:text-2xl" />
-        </button>
+        {/* User Profile Menu */}
+        <div className="relative" ref={userMenuRef}>
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            aria-label="User Menu"
+            className="bg-[#3668B1] rounded-full text-white w-10 md:w-12 h-10 md:h-12 flex items-center justify-center hover:bg-[#2a5492] transition-colors"
+          >
+            <BsPersonFill className="md:text-2xl" />
+          </button>
+
+          {/* User Dropdown Menu */}
+          {showUserMenu && (
+            <div className="absolute right-0 mt-2 w-66 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
+              {/* User Info Section */}
+              <div className="px-4 py-3 border-b border-gray-200">
+                <p className="text-sm text-gray-500">Signed in as</p>
+                <p className="text-sm font-semibold text-gray-800 truncate">
+                  {userEmail}
+                </p>
+              </div>
+           
+              {/* Logout Section */}
+              <div className="border-t border-gray-200 py-1">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
+                >
+                  <BiLogOut className="text-lg" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
