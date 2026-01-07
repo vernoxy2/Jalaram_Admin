@@ -128,10 +128,19 @@ const JobDetailsScreen = () => {
     return `${hours}h ${minutes}m ${seconds}s`;
   };
 
-
   // Updated generateHTMLContent function with modified material usage display
 
   const generateHTMLContent = () => {
+    // Calculate slitting grand total
+    const slittingGrandTotal =
+      order.slittingData && order.slittingData.length > 0
+        ? order.slittingData.reduce(
+            (sum, item) => sum + (parseFloat(item.C) || 0),
+            0
+          )
+        : 0;
+
+
     const slittingRows =
       order.slittingData && order.slittingData.length > 0
         ? order.slittingData
@@ -143,12 +152,14 @@ const JobDetailsScreen = () => {
         <td>${item.C || ""}</td>
       </tr>`
             )
-            .join("")
+            .join("") +
+          `
+      <tr style="font-weight: bold; background-color: #f0f0f0;">
+        <td colspan="2" style="text-align: right;">Grand Total:</td>
+        <td>${slittingGrandTotal}</td>
+      </tr>`
         : `<tr><td colspan="3">No data available</td></tr>`;
 
-    // ✅ REMOVED: allocatedMaterialsHTML - No longer displayed above the table
-
-    // ✅ UPDATED: Generate material usage table with allocatedQty and materialCategory
     const generateStageUsageTable = (stageName) => {
       if (
         !order.materialUsageTracking ||
@@ -262,8 +273,9 @@ const JobDetailsScreen = () => {
         padding: 6px 14px; 
         border-radius: 5px; 
         display: inline-block; 
+        text-align: center;
         margin-bottom: 12px;
-        font-size: 14px !important;
+        font-size: 14px;
       }
       
       .row { 
@@ -276,17 +288,18 @@ const JobDetailsScreen = () => {
         flex: 1; 
         min-width: 180px; 
         margin-right: 10px; 
+        white-space: nowrap;
       }
       
       .label { 
         font-weight: bold;
-        font-size: 12px !important;
+        font-size: 12px;
       }
       
       .input { 
         display: inline-block; 
         min-width: 120px;
-        font-size: 12px !important;
+        font-size: 12px;
       }
       
       table { 
@@ -299,7 +312,7 @@ const JobDetailsScreen = () => {
         border: 1px solid #3668B1; 
         padding: 5px 8px; 
         text-align: center;
-        font-size: 11px !important;
+        font-size: 11px;
       }
       
       .small-table td { 
@@ -470,7 +483,7 @@ const JobDetailsScreen = () => {
       </div>
       <div class="row">
           <div class="col"><span class="label">Job Original Size:</span> <span class="input">${
-            order.jobSize || ""
+            `${order.jobLength} * ${order.jobWidth}`
           }</span></div>
           <div class="col"><span class="label">Job Qty:</span> <span class="input">${
             order.jobQty || ""
@@ -516,8 +529,16 @@ const JobDetailsScreen = () => {
           </tr>
         </table>
 
-      <div class="row">
-             <div class="col">
+         <div class="row">
+                <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
+                  order.runningMtr || ""
+                }</span></div>
+                <div class="col"><span class="label">Tooling:</span> <span class="input">${
+                  order.tooling || ""
+                }</span></div>
+          </div>
+            <div class="row">
+          <div class="col">
             <span class="label">Printing Colors:</span>
             <span class="input">
               ${
@@ -527,10 +548,10 @@ const JobDetailsScreen = () => {
               }
             </span>
           </div>
-            <div class="col"><span class="label">Tooling:</span> <span class="input">${
-              order.tooling || ""
-            }</span></div>
-      </div>   
+                <div class="col"><span class="label">Actual Required Material :</span> <span class="input">${
+                  order.totalPaperRequired || ""
+                }m</span></div>
+      </div>  
 
      ${generateStageUsageTable("printing")}
     </div>
@@ -547,11 +568,9 @@ const JobDetailsScreen = () => {
           punchingEndTimeFormatted || ""
         }</span></div>
       </div>
-      <div class="row">
-        <div class="col"><span class="label">Paper Code:</span> <span class="input">${
-          order.paperCode || ""
-        }</span></div>
+      <div class="row">       
         <div class="col"><span class="label">Running Mtrs:</span> <span class="input">
+        ${order.runningMtr || ""}
         </span></div>
       </div>
 
