@@ -808,7 +808,7 @@ const AddJob = () => {
             {/* Around */}
             <FloatingSelect
               name="around"
-              label="Around"
+              label="Around *"
               value={aroundValue}
               onChange={(e) => {
                 handleAroundUpChange(e);
@@ -822,7 +822,7 @@ const AddJob = () => {
             <FloatingInput
               type="number"
               name="aroundGap"
-              label="Around Gap *"
+              label="Around Gap"
               value={aroundGap}
               onChange={(e) => {
                 const value = e.target.value;
