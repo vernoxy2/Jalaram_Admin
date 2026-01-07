@@ -7,6 +7,7 @@ import Addbtn from "../../Components/Addbtn";
 import { FiSearch } from "react-icons/fi";
 import { RiPencilFill } from "react-icons/ri";
 import { FaSortAmountDown, FaSortAmountUp } from "react-icons/fa";
+import { materialTypeList } from "../../utils/constant";
 
 const MaterialList = () => {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ const MaterialList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [dateError, setDateError] = useState("");
+  const [materialTypeFilter, setMaterialTypeFilter] = useState(""); // Add this
 
   // ✅ Helper function to safely extract string value from object or string
   const getDisplayValue = (value) => {
@@ -63,6 +65,7 @@ const MaterialList = () => {
     setSortOrder("desc");
     setCurrentPage(1);
     setDateError("");
+    setMaterialTypeFilter("");
   };
 
   // Filter materials based on active tab
@@ -95,6 +98,7 @@ const MaterialList = () => {
         item.paperProductCode
       ).toLowerCase();
       const jobPaperStr = getDisplayValue(item.jobPaper).toLowerCase();
+      const paperSizeStr = getDisplayValue(item.paperSize).toLowerCase();
 
       // Search filter
       const matchesSearch =
@@ -102,13 +106,22 @@ const MaterialList = () => {
         paperProductCodeStr.includes(s) ||
         jobPaperStr.includes(s) ||
         item.totalRunningMeter?.toString().includes(s) ||
-        formattedDate.includes(s);
+        formattedDate.includes(s) ||
+        paperSizeStr.includes(s);
 
       if (!matchesSearch) return false;
 
       // Date range filter
       if (fromDate && formattedDate < fromDate) return false;
       if (toDate && formattedDate > toDate) return false;
+
+      // ✅ ADD Material Type Filter (works for both tabs)
+      if (materialTypeFilter) {
+        const itemMaterialType = getDisplayValue(item.jobPaper);
+        if (itemMaterialType !== materialTypeFilter) {
+          return false;
+        }
+      }
 
       // Category filter (only for created tab)
       if (
@@ -191,7 +204,7 @@ const MaterialList = () => {
       <div className="relative">
         <input
           type="text"
-          placeholder="Search by Paper Code, Company, Material Type..."
+          placeholder="Search by Paper Code, Company, Material Type, Paper Size..."
           className="border border-black/20 rounded-3xl w-full p-3 pr-10 text-sm"
           value={search}
           onChange={(e) => {
@@ -242,6 +255,28 @@ const MaterialList = () => {
             }}
             className="border border-black/20 rounded-2xl p-3 w-full"
           />
+        </div>
+
+        {/* ✅ ADD Material Type Filter - Works for BOTH tabs */}
+        <div className="flex-1 min-w-[200px]">
+          <label className="block mb-2 font-medium text-base">
+            Material Type
+          </label>
+          <select
+            value={materialTypeFilter}
+            onChange={(e) => {
+              setMaterialTypeFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="border border-black/20 rounded-2xl p-3 w-full"
+          >
+            <option value="">All Material Types</option>
+            {materialTypeList.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Material Category - Only for Created Tab */}
@@ -305,126 +340,134 @@ const MaterialList = () => {
       {/* Table */}
       <div className="overflow-x-auto rounded-2xl shadow-lg">
         <div className="max-w-1 inline-block align-middle">
-        <table className="table-auto w-full rounded-xl">
-          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-xl px-3 text-white">
-            <tr>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Date
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Paper Code
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Company
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Material Type
-              </th>
-              {activeTab === "created" && (
-                <>
-                  <th className="px-4 py-2 border-r-2 whitespace-nowrap">
-                    Material Category
-                  </th>
-                  <th className="px-4 py-2 border-r-2 whitespace-nowrap">
-                    Source Job
-                  </th>
-                  <th className="px-4 py-2 border-r-2 whitespace-nowrap">
-                    Source Stage
-                  </th>
-                </>
-              )}
-              <th className="px-4 py-2 border-r-2 whitespace-pre">
-                Total Running Meter
-              </th>
-              <th className="px-4 py-2 border-r-2 whitespace-pre">
-                No. of Rolls
-              </th>
-              <th className="px-4 py-2 border-r-2 whitespace-pre">
-                Available Running Meter
-              </th>
-              <th className="px-4 py-2 whitespace-pre">Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {currentItems.map((item) => (
-              <tr className="text-center hover:bg-gray-50" key={item.id}>
-                <td className="border px-2 md:px-4 py-2">
-                  {item.createdAt
-                    ? new Date(
-                        item.createdAt.seconds
-                          ? item.createdAt.seconds * 1000
-                          : item.createdAt
-                      ).toLocaleDateString("en-IN")
-                    : ""}
-                </td>
-                <td className="border px-2 md:px-4 py-2">
-                  {getDisplayValue(item.paperCode)}
-                </td>
-                <td className="border px-2 md:px-4 py-2">
-                  {getDisplayValue(item.paperProductCode)}
-                </td>
-                <td className="border px-2 md:px-4 py-2">
-                  {getDisplayValue(item.jobPaper)}
-                </td>
+          <table className="table-auto w-full rounded-xl">
+            <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] text-xl px-3 text-white">
+              <tr>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Date
+                </th>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Paper Code
+                </th>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Company
+                </th>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Material Type
+                </th>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Paper Size
+                </th>
                 {activeTab === "created" && (
                   <>
-                    <td className="border px-4 py-2">
-                      <span
-                        className={`px-2 py-1 rounded-full text-sm font-medium ${
-                          item.materialCategory === "LO"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-purple-100 text-purple-800"
-                        }`}
-                      >
-                        {item.materialCategory}
-                      </span>
-                    </td>
-                    <td className="border px-2 md:px-4 py-2">
-                      {item.sourceJobCardNo || "-"}
-                    </td>
-                    <td className="border px-2 md:px-4 py-2">
-                      <span className="capitalize">
-                        {item.sourceStage || "-"}
-                      </span>
-                    </td>
+                    <th className="px-4 py-2 border-r-2 whitespace-nowrap">
+                      Material Category
+                    </th>
+                    <th className="px-4 py-2 border-r-2 whitespace-nowrap">
+                      Source Job
+                    </th>
+                    <th className="px-4 py-2 border-r-2 whitespace-nowrap">
+                      Source Stage
+                    </th>
                   </>
                 )}
-                <td className="border px-2 md:px-4 py-2">
-                  {item.totalRunningMeter}
-                </td>
-                <td className="border px-2 md:px-4 py-2">{item.roll || "-"}</td>
-                <td className="border px-2 md:px-4 py-2">
-                  {item.availableRunningMeter}
-                </td>
-                <td className="border py-2 text-center space-x-2">
-                  {activeTab === "raw" && item.availableRunningMeter > 0 ? (
-                    <button
-                      onClick={() => navigate(`edit/${item.id}`)}
-                      className="bg-[#D2D2D2] text-primary p-1 rounded text-2xl hover:bg-gray-400 transition-colors"
-                      title="Edit Material"
-                    >
-                      <RiPencilFill />
-                    </button>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </td>
+                <th className="px-4 py-2 border-r-2 whitespace-pre">
+                  Total Running Meter
+                </th>
+                <th className="px-4 py-2 border-r-2 whitespace-pre">
+                  No. of Rolls
+                </th>
+                <th className="px-4 py-2 border-r-2 whitespace-pre">
+                  Available Running Meter
+                </th>
+                <th className="px-4 py-2 whitespace-pre">Action</th>
               </tr>
-            ))}
+            </thead>
 
-            {currentItems.length === 0 && (
-              <tr>
-                <td
-                  colSpan={activeTab === "created" ? "10" : "7"}
-                  className="text-center p-8 text-gray-500"
-                >
-                  <div className="font-medium">No materials found</div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            <tbody>
+              {currentItems.map((item) => (
+                <tr className="text-center hover:bg-gray-50" key={item.id}>
+                  <td className="border px-2 md:px-4 py-2">
+                    {item.createdAt
+                      ? new Date(
+                          item.createdAt.seconds
+                            ? item.createdAt.seconds * 1000
+                            : item.createdAt
+                        ).toLocaleDateString("en-IN")
+                      : ""}
+                  </td>
+                  <td className="border px-2 md:px-4 py-2">
+                    {getDisplayValue(item.paperCode)}
+                  </td>
+                  <td className="border px-2 md:px-4 py-2">
+                    {getDisplayValue(item.paperProductCode)}
+                  </td>
+                  <td className="border px-2 md:px-4 py-2">
+                    {getDisplayValue(item.jobPaper)}
+                  </td>
+                  <td className="border px-2 md:px-4 py-2">
+                    {getDisplayValue(item.paperSize)}
+                  </td>
+                  {activeTab === "created" && (
+                    <>
+                      <td className="border px-4 py-2">
+                        <span
+                          className={`px-2 py-1 rounded-full text-sm font-medium ${
+                            item.materialCategory === "LO"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-purple-100 text-purple-800"
+                          }`}
+                        >
+                          {item.materialCategory}
+                        </span>
+                      </td>
+                      <td className="border px-2 md:px-4 py-2">
+                        {item.sourceJobCardNo || "-"}
+                      </td>
+                      <td className="border px-2 md:px-4 py-2">
+                        <span className="capitalize">
+                          {item.sourceStage || "-"}
+                        </span>
+                      </td>
+                    </>
+                  )}
+                  <td className="border px-2 md:px-4 py-2">
+                    {item.totalRunningMeter}
+                  </td>
+                  <td className="border px-2 md:px-4 py-2">
+                    {item.roll || "-"}
+                  </td>
+                  <td className="border px-2 md:px-4 py-2">
+                    {item.availableRunningMeter}
+                  </td>
+                  <td className="border py-2 text-center space-x-2">
+                    {activeTab === "raw" && item.availableRunningMeter > 0 ? (
+                      <button
+                        onClick={() => navigate(`edit/${item.id}`)}
+                        className="bg-[#D2D2D2] text-primary p-1 rounded text-2xl hover:bg-gray-400 transition-colors"
+                        title="Edit Material"
+                      >
+                        <RiPencilFill />
+                      </button>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+
+              {currentItems.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={activeTab === "created" ? "10" : "7"}
+                    className="text-center p-8 text-gray-500"
+                  >
+                    <div className="font-medium">No materials found</div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
