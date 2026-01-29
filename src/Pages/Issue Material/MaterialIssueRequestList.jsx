@@ -214,6 +214,9 @@ const MaterialIssueRequestList = () => {
                 Request Date
               </th>
               <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                Paper Size
+              </th>
+              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
                 Required Material
               </th>
               <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
@@ -260,6 +263,7 @@ const MaterialIssueRequestList = () => {
                             .split("T")[0]
                         : ""}
                     </td>
+                    <td className="border px-4 py-2">{item.paperSize}</td>
                     <td className="border px-4 py-2">
                       {item.requiredMaterial
                         ? parseFloat(item.requiredMaterial).toString()
