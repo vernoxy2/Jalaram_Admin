@@ -12,6 +12,7 @@ export const paperProductCodeData = [
   { label: "Stiqa", value: "Stiqa" },
   { label: "Sun Paper", value: "Sun Paper" },
   { label: "Papier Industries", value: "Papier Industries" },
+  { label: "Thermal", value: "Thermal" }
 ];
 
 export const printingPlateSize = [
