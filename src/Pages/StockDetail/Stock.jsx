@@ -103,12 +103,15 @@ const StockReport = () => {
           });
 
           // ✅ Calculate Total Issue from issue transactions
+          // const issueTransactions = materialTransactions.filter(
+          //   (t) => t.transactionType === "issue"
+          // );
           const issueTransactions = materialTransactions.filter(
-            (t) => t.transactionType === "issue"
+            (t) => t.transactionType === "issue" && t.isCancelled !== true,
           );
           const totalIssue = issueTransactions.reduce(
             (sum, t) => sum + (parseFloat(t.usedQty) || 0),
-            0
+            0,
           );
 
           let totalUsed = 0;
@@ -123,7 +126,7 @@ const StockReport = () => {
             let lastStage = null;
             for (let i = stageOrder.length - 1; i >= 0; i--) {
               const stageTransactions = materialTransactions.filter(
-                (t) => (t.stage || "").toLowerCase() === stageOrder[i]
+                (t) => (t.stage || "").toLowerCase() === stageOrder[i],
               );
               if (stageTransactions.length > 0) {
                 lastStage = stageOrder[i];
@@ -134,12 +137,12 @@ const StockReport = () => {
             // Only count the LAST stage to avoid double counting
             if (lastStage) {
               const lastStageTransactions = materialTransactions.filter(
-                (t) => (t.stage || "").toLowerCase() === lastStage
+                (t) => (t.stage || "").toLowerCase() === lastStage,
               );
 
               totalUsed = lastStageTransactions.reduce(
                 (sum, t) => sum + (parseFloat(t.usedQty) || 0),
-                0
+                0,
               );
             }
 
@@ -161,7 +164,7 @@ const StockReport = () => {
           ) {
             // ✅ For LO/WIP: Only calculate if material has been consumed
             const consumptionTransactions = materialTransactions.filter(
-              (t) => t.transactionType === "consumption"
+              (t) => t.transactionType === "consumption",
             );
 
             // ✅ FIX: If no consumption transactions exist, this material hasn't been used yet
@@ -170,15 +173,15 @@ const StockReport = () => {
 
               totalWaste = consumptionTransactions.reduce(
                 (sum, t) => sum + (parseFloat(t.wasteQty) || 0),
-                0
+                0,
               );
               totalLO = consumptionTransactions.reduce(
                 (sum, t) => sum + (parseFloat(t.loQty) || 0),
-                0
+                0,
               );
               totalWIP = consumptionTransactions.reduce(
                 (sum, t) => sum + (parseFloat(t.wipQty) || 0),
-                0
+                0,
               );
               // ✅ Used = Created - (Waste + LO + WIP)
               totalUsed = created - (totalWaste + totalLO + totalWIP);
@@ -198,7 +201,7 @@ const StockReport = () => {
             ? new Date(
                 material.createdAt.seconds
                   ? material.createdAt.seconds * 1000
-                  : material.createdAt
+                  : material.createdAt,
               )
             : new Date();
 
@@ -209,7 +212,7 @@ const StockReport = () => {
 
           // Find customer name from orders using sourceJobCardNo
           const matchingOrder = orders.find(
-            (order) => order.jobCardNo === material.sourceJobCardNo
+            (order) => order.jobCardNo === material.sourceJobCardNo,
           );
           const customerName = matchingOrder?.customerName || "-";
 
@@ -393,7 +396,7 @@ const StockReport = () => {
       loCreated: 0,
       wipCreated: 0,
       available: 0,
-    }
+    },
   );
   // Get unique paper codes for filter dropdown
   const uniquePaperCodes = [
@@ -401,7 +404,7 @@ const StockReport = () => {
       stockData
         .filter((item) => item.materialCategory === "RAW")
         .map((item) => item.paperCode)
-        .filter((code) => code !== "-")
+        .filter((code) => code !== "-"),
     ),
   ].sort();
 
@@ -717,8 +720,8 @@ const StockReport = () => {
                         item.materialCategory === "RAW"
                           ? "bg-blue-200 text-blue-800"
                           : item.materialCategory === "LO"
-                          ? "bg-yellow-200 text-yellow-800"
-                          : "bg-purple-200 text-purple-800"
+                            ? "bg-yellow-200 text-yellow-800"
+                            : "bg-purple-200 text-purple-800"
                       }`}
                     >
                       {item.materialCategory}
