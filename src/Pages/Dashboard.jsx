@@ -68,10 +68,7 @@ const Dashboard = () => {
   // Selected Month State (default to current month)
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
-      2,
-      "0"
-    )}`;
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
 
   // Job Statistics
@@ -134,75 +131,44 @@ const Dashboard = () => {
       );
 
       setTotalJobs(filteredJobs.length);
-      setPrintingJobs(
-        filteredJobs.filter((j) => j.jobStatus === "Printing").length
-      );
-      setPunchingJobs(
-        filteredJobs.filter((j) => j.jobStatus === "Punching").length
-      );
-      setSlittingJobs(
-        filteredJobs.filter((j) => j.jobStatus === "Slitting").length
-      );
-      setCompletedJobs(
-        filteredJobs.filter((j) => j.jobStatus === "Completed").length
-      );
-      setPendingJobs(
-        filteredJobs.filter((j) => j.jobStatus !== "Completed").length
-      );
+      setPrintingJobs(filteredJobs.filter((j) => j.jobStatus === "Printing").length);
+      setPunchingJobs(filteredJobs.filter((j) => j.jobStatus === "Punching").length);
+      setSlittingJobs(filteredJobs.filter((j) => j.jobStatus === "Slitting").length);
+      setCompletedJobs(filteredJobs.filter((j) => j.jobStatus === "Completed").length);
+      setPendingJobs(filteredJobs.filter((j) => j.jobStatus !== "Completed").length);
 
-      // Fetch Materials Data
+      // Fetch ALL Materials (no month filter — same as StockReport)
       const materialsSnapshot = await getDocs(collection(db, "materials"));
-      const materials = materialsSnapshot.docs.map((doc) => ({
+      const allMaterials = materialsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
 
-      // Filter materials by selected month
-      const filteredMaterials = materials.filter((material) =>
+      // Fetch ALL Transactions (no month filter — same as StockReport)
+      const transactionsSnapshot = await getDocs(collection(db, "materialTransactions"));
+      const allTransactions = transactionsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      const filteredMaterials = allMaterials.filter((material) =>
         isInSelectedMonth(material.createdAt)
       );
 
-      // Fetch Material Transactions
-      const transactionsSnapshot = await getDocs(
-        collection(db, "materialTransactions")
-      );
-      const transactions = transactionsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      // Filter transactions by selected month
-      const filteredTransactions = transactions.filter((transaction) =>
+      const filteredTransactions = allTransactions.filter((transaction) =>
         isInSelectedMonth(transaction.transactionDate)
       );
-
-      // ✅ Calculate Total Issue from filtered transactions
-      const totalIssueCalc = filteredTransactions
-        .filter((t) => t.transactionType === "issue")
-        .reduce((sum, t) => sum + (parseFloat(t.usedQty) || 0), 0);
-
-      setTotalIssue(totalIssueCalc);
-
-      // ✅ Calculate stock using SAME logic as StockReport but only for selected month
-      let totalUsedCalc = 0;
-      let totalWasteCalc = 0;
+      let totalIssueCalc = 0;
 
       filteredMaterials.forEach((material) => {
-        // Match transactions by paperCode - filter by material's paper code
+        // Match transactions for this material (same logic as StockReport)
         const materialTransactions = filteredTransactions.filter((t) => {
           if (material.materialCategory === "RAW") {
-            // Check direct paperCode match (for issue transactions)
-            if (t.paperCode === material.paperCode) {
-              return true;
-            }
-
-            // Check paperProductNo (comma-separated)
+            if (t.paperCode === material.paperCode) return true;
             const transactionPaperCodes = t.paperProductNo
               ? t.paperProductNo.split(",").map((code) => code.trim())
               : [];
             return transactionPaperCodes.includes(material.paperCode);
           }
-
           if (
             material.materialCategory === "LO" ||
             material.materialCategory === "WIP"
@@ -213,7 +179,45 @@ const Dashboard = () => {
               t.paperProductNo === material.paperCode
             );
           }
+          return false;
+        });
 
+        // Issue transactions only — not cancelled (same as StockReport)
+        const issueTransactions = materialTransactions.filter(
+          (t) => t.transactionType === "issue" && t.isCancelled !== true
+        );
+
+        const materialIssue = issueTransactions.reduce(
+          (sum, t) => sum + (parseFloat(t.usedQty) || 0),
+          0
+        );
+
+        totalIssueCalc += materialIssue;
+      });
+
+      setTotalIssue(totalIssueCalc);
+      let totalUsedCalc = 0;
+      let totalWasteCalc = 0;
+
+      filteredMaterials.forEach((material) => {
+        const materialTransactions = filteredTransactions.filter((t) => {
+          if (material.materialCategory === "RAW") {
+            if (t.paperCode === material.paperCode) return true;
+            const transactionPaperCodes = t.paperProductNo
+              ? t.paperProductNo.split(",").map((code) => code.trim())
+              : [];
+            return transactionPaperCodes.includes(material.paperCode);
+          }
+          if (
+            material.materialCategory === "LO" ||
+            material.materialCategory === "WIP"
+          ) {
+            return (
+              t.paperCode === material.paperCode ||
+              t.paperProductCode === material.paperCode ||
+              t.paperProductNo === material.paperCode
+            );
+          }
           return false;
         });
 
@@ -221,7 +225,6 @@ const Dashboard = () => {
         let materialWaste = 0;
 
         if (material.materialCategory === "RAW") {
-          // For RAW: Find the LAST stage where material was used
           const stageOrder = ["printing", "punching", "slitting", "slotting"];
           let lastStage = null;
 
@@ -245,10 +248,10 @@ const Dashboard = () => {
             );
           }
 
-          // Sum waste across ALL stages
           materialWaste = materialTransactions
             .filter((t) => t.transactionType === "consumption")
             .reduce((sum, t) => sum + (parseFloat(t.wasteQty) || 0), 0);
+
         } else if (
           material.materialCategory === "LO" ||
           material.materialCategory === "WIP"
@@ -284,41 +287,28 @@ const Dashboard = () => {
         totalWasteCalc += materialWaste;
       });
 
-      // Calculate totals from filtered materials
-      const rawMaterials = filteredMaterials.filter(
-        (m) => m.materialCategory === "RAW"
-      );
-      const loMaterials = filteredMaterials.filter(
-        (m) => m.materialCategory === "LO"
-      );
-      const wipMaterials = filteredMaterials.filter(
-        (m) => m.materialCategory === "WIP"
-      );
+      const rawMaterials = filteredMaterials.filter((m) => m.materialCategory === "RAW");
+      const loMaterials  = filteredMaterials.filter((m) => m.materialCategory === "LO");
+      const wipMaterials = filteredMaterials.filter((m) => m.materialCategory === "WIP");
 
       const totalRaw = rawMaterials.reduce(
-        (sum, m) => sum + (parseFloat(m.totalRunningMeter) || 0),
-        0
+        (sum, m) => sum + (parseFloat(m.totalRunningMeter) || 0), 0
       );
       const totalLo = loMaterials.reduce(
-        (sum, m) => sum + (parseFloat(m.totalRunningMeter) || 0),
-        0
+        (sum, m) => sum + (parseFloat(m.totalRunningMeter) || 0), 0
       );
       const totalWip = wipMaterials.reduce(
-        (sum, m) => sum + (parseFloat(m.totalRunningMeter) || 0),
-        0
+        (sum, m) => sum + (parseFloat(m.totalRunningMeter) || 0), 0
       );
 
       const totalAvailableRaw = rawMaterials.reduce(
-        (sum, m) => sum + (parseFloat(m.availableRunningMeter) || 0),
-        0
+        (sum, m) => sum + (parseFloat(m.availableRunningMeter) || 0), 0
       );
       const totalAvailableLo = loMaterials.reduce(
-        (sum, m) => sum + (parseFloat(m.availableRunningMeter) || 0),
-        0
+        (sum, m) => sum + (parseFloat(m.availableRunningMeter) || 0), 0
       );
       const totalAvailableWip = wipMaterials.reduce(
-        (sum, m) => sum + (parseFloat(m.availableRunningMeter) || 0),
-        0
+        (sum, m) => sum + (parseFloat(m.availableRunningMeter) || 0), 0
       );
 
       setRawPurchased(totalRaw);
@@ -326,28 +316,23 @@ const Dashboard = () => {
       setWipCreated(totalWip);
       setTotalUsed(totalUsedCalc);
       setTotalWaste(totalWasteCalc);
-      setTotalAvailable(
-        totalAvailableRaw + totalAvailableLo + totalAvailableWip
-      );
+      setTotalAvailable(totalAvailableRaw + totalAvailableLo + totalAvailableWip);
 
-      // Fetch Material Requests
+      // ─────────────────────────────────────────────────────────────
+      // Material Requests
+      // ─────────────────────────────────────────────────────────────
       const requestsSnapshot = await getDocs(collection(db, "materialRequest"));
       const requests = requestsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
 
-      // Filter requests by selected month
       const filteredRequests = requests.filter((request) =>
         isInSelectedMonth(request.createdAt)
       );
 
-      setPendingRequests(
-        filteredRequests.filter((r) => r.isIssued !== true).length
-      );
-      setApprovedRequests(
-        filteredRequests.filter((r) => r.isIssued === true).length
-      );
+      setPendingRequests(filteredRequests.filter((r) => r.isIssued !== true).length);
+      setApprovedRequests(filteredRequests.filter((r) => r.isIssued === true).length);
 
       setLoading(false);
     } catch (error) {
@@ -358,7 +343,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [selectedMonth]); // Re-fetch when month changes
+  }, [selectedMonth]);
 
   // Generate month options for the last 12 months
   const generateMonthOptions = () => {
@@ -367,9 +352,7 @@ const Dashboard = () => {
 
     for (let i = 0; i < 12; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const value = `${date.getFullYear()}-${String(
-        date.getMonth() + 1
-      ).padStart(2, "0")}`;
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       const label = date.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
@@ -381,23 +364,6 @@ const Dashboard = () => {
   };
 
   const monthOptions = generateMonthOptions();
-
-  // if (loading) {
-  //   return (
-  //     <div className="flex items-center justify-center h-screen bg-white">
-  //       <div className="text-center">
-  //         <div className="relative">
-  //           <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-100 mx-auto mb-6"></div>
-  //           <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-blue-600 absolute top-0 left-1/2 transform -translate-x-1/2"></div>
-  //         </div>
-  //         <p className="text-gray-700 font-semibold text-lg">
-  //           Loading Dashboard
-  //         </p>
-  //         <p className="text-gray-500 text-sm mt-1">Please wait...</p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
 
   return (
     <div className="min-h-screen bg-white">
@@ -413,18 +379,17 @@ const Dashboard = () => {
                 <select
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="border  border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+                  className="border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
                 >
                   {monthOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
                   ))}
-                  {/* Dropdown Arrow Icon */}
                 </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none ">
-                    <FaAngleDown className="w-5 h-5 text-textcolor " />
-                  </div>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none ">
+                  <FaAngleDown className="w-5 h-5 text-textcolor " />
+                </div>
               </div>
             </div>
           </div>
@@ -531,9 +496,7 @@ const Dashboard = () => {
                 <FaPrint className="text-2xl text-purple-600" />
               </div>
               <p className="text-gray-600 font-medium mb-1">Printing</p>
-              <p className="text-purple-600 text-3xl font-bold">
-                {printingJobs}
-              </p>
+              <p className="text-purple-600 text-3xl font-bold">{printingJobs}</p>
             </div>
 
             <div className="bg-white rounded-lg p-5 border border-gray-200">
@@ -541,9 +504,7 @@ const Dashboard = () => {
                 <FaBoxes className="text-2xl text-orange-600" />
               </div>
               <p className="text-gray-600 font-medium mb-1">Punching</p>
-              <p className="text-orange-600 text-3xl font-bold">
-                {punchingJobs}
-              </p>
+              <p className="text-orange-600 text-3xl font-bold">{punchingJobs}</p>
             </div>
 
             <div className="bg-white rounded-lg p-5 border border-gray-200">
@@ -559,9 +520,7 @@ const Dashboard = () => {
                 <FaCheckCircle className="text-2xl text-green-600" />
               </div>
               <p className="text-gray-600  font-medium mb-1">Completed</p>
-              <p className="text-green-600 text-3xl font-bold">
-                {completedJobs}
-              </p>
+              <p className="text-green-600 text-3xl font-bold">{completedJobs}</p>
             </div>
 
             <div className="bg-white rounded-lg p-5 border border-gray-200">
@@ -569,9 +528,7 @@ const Dashboard = () => {
                 <FaHourglassHalf className="text-2xl text-yellow-600" />
               </div>
               <p className="text-gray-600  font-medium mb-1">In Progress</p>
-              <p className="text-yellow-600 text-3xl font-bold">
-                {pendingJobs}
-              </p>
+              <p className="text-yellow-600 text-3xl font-bold">{pendingJobs}</p>
             </div>
           </div>
         </div>
@@ -622,54 +579,42 @@ const Dashboard = () => {
               <ProgressBar
                 label="RAW Material"
                 value={rawPurchased}
-                total={
-                  rawPurchased + loCreated + wipCreated + totalUsed + totalWaste
-                }
+                total={rawPurchased + loCreated + wipCreated + totalUsed + totalWaste}
                 color="bg-blue-500"
                 lightColor="bg-blue-100"
               />
               <ProgressBar
                 label="Total Issue"
                 value={totalIssue}
-                total={
-                  rawPurchased + loCreated + wipCreated + totalUsed + totalWaste
-                }
+                total={rawPurchased + loCreated + wipCreated + totalUsed + totalWaste}
                 color="bg-orange-500"
                 lightColor="bg-orange-100"
               />
               <ProgressBar
                 label="LO Material"
                 value={loCreated}
-                total={
-                  rawPurchased + loCreated + wipCreated + totalUsed + totalWaste
-                }
+                total={rawPurchased + loCreated + wipCreated + totalUsed + totalWaste}
                 color="bg-yellow-500"
                 lightColor="bg-yellow-100"
               />
               <ProgressBar
                 label="WIP Material"
                 value={wipCreated}
-                total={
-                  rawPurchased + loCreated + wipCreated + totalUsed + totalWaste
-                }
+                total={rawPurchased + loCreated + wipCreated + totalUsed + totalWaste}
                 color="bg-purple-500"
                 lightColor="bg-purple-100"
               />
               <ProgressBar
                 label="Total Used"
                 value={totalUsed}
-                total={
-                  rawPurchased + loCreated + wipCreated + totalUsed + totalWaste
-                }
+                total={rawPurchased + loCreated + wipCreated + totalUsed + totalWaste}
                 color="bg-green-500"
                 lightColor="bg-green-100"
               />
               <ProgressBar
                 label="Total Waste"
                 value={totalWaste}
-                total={
-                  rawPurchased + loCreated + wipCreated + totalUsed + totalWaste
-                }
+                total={rawPurchased + loCreated + wipCreated + totalUsed + totalWaste}
                 color="bg-red-500"
                 lightColor="bg-red-100"
               />
@@ -694,9 +639,7 @@ const Dashboard = () => {
                 </span>
               </div>
               <p className="text-gray-600 font-medium mb-1">Pending Requests</p>
-              <p className="text-yellow-600 text-4xl font-bold">
-                {pendingRequests}
-              </p>
+              <p className="text-yellow-600 text-4xl font-bold">{pendingRequests}</p>
             </div>
 
             <div className="bg-green-50 rounded-lg p-6 border border-green-200">
@@ -708,12 +651,8 @@ const Dashboard = () => {
                   APPROVED
                 </span>
               </div>
-              <p className="text-gray-600  font-medium mb-1">
-                Approved Requests
-              </p>
-              <p className="text-green-600 text-4xl font-bold">
-                {approvedRequests}
-              </p>
+              <p className="text-gray-600  font-medium mb-1">Approved Requests</p>
+              <p className="text-green-600 text-4xl font-bold">{approvedRequests}</p>
             </div>
           </div>
         </div>
