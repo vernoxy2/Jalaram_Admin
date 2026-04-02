@@ -1,9 +1,76 @@
 import { useEffect, useState, useRef } from "react";
 import { FiSearch } from "react-icons/fi";
-import { Link, useLocation } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
-import { collection, getDocs } from "firebase/firestore";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  collection,
+  getDocs,
+  doc,
+  query,
+  where,
+  writeBatch,
+  deleteField,
+} from "firebase/firestore";
 import { db } from "../../firebase";
+
+const Modal = ({
+  isOpen,
+  type,
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  confirmText,
+  cancelText,
+}) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90%] max-w-sm">
+        <div
+          className={`mx-auto mb-4 flex items-center justify-center w-14 h-14 rounded-full ${
+            type === "danger"
+              ? "bg-red-100"
+              : type === "success"
+                ? "bg-green-100"
+                : "bg-yellow-100"
+          }`}
+        >
+          <span className="text-2xl">
+            {type === "danger" ? "⚠️" : type === "success" ? "✅" : "ℹ️"}
+          </span>
+        </div>
+        {title && (
+          <h3 className="text-center text-lg font-bold text-gray-800 mb-2">
+            {title}
+          </h3>
+        )}
+        <p className="text-center text-gray-600 text-sm mb-6">{message}</p>
+        <div className="flex gap-3">
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="flex-1 py-2 rounded-xl border border-gray-300 text-gray-600 font-semibold hover:bg-gray-50"
+            >
+              {cancelText || "Cancel"}
+            </button>
+          )}
+          <button
+            onClick={onConfirm}
+            className={`flex-1 py-2 rounded-xl font-semibold text-white ${
+              type === "danger"
+                ? "bg-red-500 hover:bg-red-600"
+                : type === "success"
+                  ? "bg-green-500 hover:bg-green-600"
+                  : "bg-blue-500 hover:bg-blue-600"
+            }`}
+          >
+            {confirmText || "OK"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const MaterialIssueRequestList = () => {
   const navigate = useNavigate();
@@ -14,17 +81,27 @@ const MaterialIssueRequestList = () => {
   const [toDate, setToDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [dateError, setDateError] = useState("");
+  const [cancellingId, setCancellingId] = useState(null);
+  const [modal, setModal] = useState({
+    isOpen: false,
+    type: "danger",
+    title: "",
+    message: "",
+    onConfirm: null,
+    onCancel: null,
+    confirmText: "OK",
+    cancelText: "Cancel",
+  });
+  const closeModal = () => setModal((prev) => ({ ...prev, isOpen: false }));
   const [highlightId, setHighlightId] = useState(
-    location.state?.highlightId || null
+    location.state?.highlightId || null,
   );
   const rowRefs = useRef({});
-
   const itemsPerPage = 10;
 
   // Handle highlight from notification
   useEffect(() => {
     if (highlightId) {
-      // Scroll to the highlighted row after a short delay
       const scrollTimer = setTimeout(() => {
         const element = rowRefs.current[highlightId];
         if (element) {
@@ -32,15 +109,12 @@ const MaterialIssueRequestList = () => {
         }
       }, 300);
 
-      // Remove highlight after 3 seconds
       const highlightTimer = setTimeout(() => {
         setHighlightId(null);
       }, 3000);
 
-      // Clear the location state
       window.history.replaceState({}, document.title);
 
-      // Cleanup timers
       return () => {
         clearTimeout(scrollTimer);
         clearTimeout(highlightTimer);
@@ -48,31 +122,168 @@ const MaterialIssueRequestList = () => {
     }
   }, [highlightId]);
 
-  // FETCH MATERIAL REQUEST DATA
+  // FETCH DATA
+  const fetchData = async () => {
+    const snapshot = await getDocs(collection(db, "materialRequest"));
+    const list = [];
+
+    const ordersSnapshot = await getDocs(collection(db, "ordersTest"));
+    const ordersMap = {};
+    ordersSnapshot.forEach((doc) => {
+      ordersMap[doc.data().jobCardNo] = {
+        ...doc.data(),
+        orderId: doc.id,
+      };
+    });
+
+    snapshot.forEach((doc) => {
+      const item = { id: doc.id, ...doc.data() };
+      const matchedOrder = ordersMap[item.jobCardNo];
+      if (matchedOrder) {
+        item.printingStatus = matchedOrder.printingStatus || null;
+        item.punchingStatus = matchedOrder.punchingStatus || null;
+        item.orderId = matchedOrder.orderId || null;
+      }
+      list.push(item);
+    });
+
+    list.sort((a, b) => {
+      const dateA = a.createdAt?.seconds
+        ? new Date(a.createdAt.seconds * 1000)
+        : new Date(a.createdAt);
+      const dateB = b.createdAt?.seconds
+        ? new Date(b.createdAt.seconds * 1000)
+        : new Date(b.createdAt);
+      return dateB - dateA;
+    });
+
+    setData(list);
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      const snapshot = await getDocs(collection(db, "materialRequest"));
-      const list = [];
-
-      snapshot.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
-
-      list.sort((a, b) => {
-        const dateA = a.createdAt?.seconds
-          ? new Date(a.createdAt.seconds * 1000)
-          : new Date(a.createdAt);
-
-        const dateB = b.createdAt?.seconds
-          ? new Date(b.createdAt.seconds * 1000)
-          : new Date(b.createdAt);
-
-        return dateB - dateA;
-      });
-
-      setData(list);
-    };
-
     fetchData();
   }, []);
+
+  // CANCEL ISSUE HANDLER
+  const handleCancelIssue = (item) => {
+    setModal({
+      isOpen: true,
+      type: "danger",
+      title: "Cancel Material Issue?",
+      message: `Are you sure you want to cancel material issue for "${item.jobName}"? This will reverse the stock.`,
+      confirmText: "Yes, Cancel",
+      cancelText: "Go Back",
+      onCancel: closeModal,
+      onConfirm: async () => {
+        closeModal();
+        setCancellingId(item.id);
+        try {
+          const batch = writeBatch(db);
+
+          // 1. Reset materialRequest
+          batch.update(doc(db, "materialRequest", item.id), {
+            isIssued: false,
+            issuedMeter: 0,
+            cancelledAt: new Date(),
+          });
+
+          // 2. Cancel transactions + reverse stock
+          const txSnapshot = await getDocs(
+            query(
+              collection(db, "materialTransactions"),
+              where("jobCardNo", "==", item.jobCardNo),
+            ),
+          );
+
+          for (const txDoc of txSnapshot.docs) {
+            const txData = txDoc.data();
+            if (txData.transactionType !== "issue") continue;
+            if (txData.isCancelled === true) continue;
+
+            batch.update(doc(db, "materialTransactions", txDoc.id), {
+              isCancelled: true,
+              cancelledAt: new Date(),
+            });
+
+            if (txData.paperCode) {
+              const matSnapshot = await getDocs(
+                query(
+                  collection(db, "materials"),
+                  where("paperCode", "==", txData.paperCode),
+                ),
+              );
+              matSnapshot.forEach((matDoc) => {
+                const matData = matDoc.data();
+                batch.update(doc(db, "materials", matDoc.id), {
+                  availableRunningMeter:
+                    Number(matData.availableRunningMeter || 0) +
+                    Number(txData.usedQty || 0),
+                  totalIssue: Math.max(
+                    0,
+                    Number(matData.totalIssue || 0) -
+                      Number(txData.usedQty || 0),
+                  ),
+                  isActive: true,
+                });
+              });
+            }
+          }
+
+          if (item.orderId) {
+            const clearFields = {
+              materialAllotStatus: "cancelled",
+              cancelledAt: new Date(),
+              // Main material fields delete
+              paperProductCode: deleteField(),
+              paperProductNo: deleteField(),
+              allocatedQty: deleteField(),
+              allocatedRolls: deleteField(),
+              materialCategory: deleteField(),
+              allocatedAt: deleteField(),
+            };
+
+            for (let i = 1; i <= 10; i++) {
+              clearFields[`paperProductCode${i}`] = deleteField();
+              clearFields[`paperProductNo${i}`] = deleteField();
+              clearFields[`allocatedQty${i}`] = deleteField();
+              clearFields[`allocatedRolls${i}`] = deleteField();
+              clearFields[`materialCategory${i}`] = deleteField();
+              clearFields[`allocatedAt${i}`] = deleteField();
+            }
+
+            batch.update(doc(db, "ordersTest", item.orderId), clearFields);
+          }
+
+          await batch.commit();
+          await fetchData();
+
+          setModal({
+            isOpen: true,
+            type: "success",
+            title: "Successfully Cancelled!",
+            message:
+              "Material issue cancelled successfully and stock has been reversed.",
+            confirmText: "OK",
+            onConfirm: closeModal,
+            onCancel: null,
+          });
+        } catch (error) {
+          console.error("Cancel issue error:", error);
+          setModal({
+            isOpen: true,
+            type: "info",
+            title: "Error!",
+            message: "An error occurred while cancelling. Please try again.",
+            confirmText: "OK",
+            onConfirm: closeModal,
+            onCancel: null,
+          });
+        } finally {
+          setCancellingId(null);
+        }
+      },
+    });
+  };
 
   const filteredItems = data.filter((item) => {
     const formattedDate = item.createdAt
@@ -81,7 +292,6 @@ const MaterialIssueRequestList = () => {
 
     const s = search.toLowerCase();
 
-    // search filter
     const matchesSearch =
       item.jobCardNo?.toLowerCase().includes(s) ||
       item.jobName?.toLowerCase().includes(s) ||
@@ -90,8 +300,6 @@ const MaterialIssueRequestList = () => {
       formattedDate.includes(s);
 
     if (!matchesSearch) return false;
-
-    // date filters
     if (fromDate && formattedDate < fromDate) return false;
     if (toDate && formattedDate > toDate) return false;
 
@@ -102,29 +310,44 @@ const MaterialIssueRequestList = () => {
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
-
   const currentItems = filteredItems.slice(indexOfFirst, indexOfLast);
 
   const goToPage = (page) => {
     if (page > 0 && page <= totalPages) setCurrentPage(page);
   };
 
-  // Helper function to determine if "Issue Now" button should be shown
   const shouldShowIssueButton = (item) => {
     const requiredMaterial = Number(item.requiredMaterial || 0);
     const issuedMeter = Number(item.issuedMeter || 0);
     const isIssued = item.isIssued === true;
-
-    // Show button if material is NOT fully issued
-    // Hide button only if: requiredMaterial <= issuedMeter AND isIssued = true
     return !(requiredMaterial <= issuedMeter && isIssued);
   };
 
+  const shouldShowCancelButton = (item) => {
+    if (item.isIssued !== true) return false;
+    if (item.printingStatus === "started") return false;
+    if (item.punchingStatus === "started") return false;
+    return true;
+  };
+
+  const hasAnyIssued = currentItems.some((item) => item.isIssued === true);
+
   return (
     <div className="space-y-3 md:space-y-4 max-w-full overflow-hidden">
-      <h1>Material Request List</h1>
+      <Modal
+        isOpen={modal.isOpen}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+        onConfirm={modal.onConfirm}
+        onCancel={modal.onCancel}
+        confirmText={modal.confirmText}
+        cancelText={modal.cancelText}
+      />
 
+      <h1>Material Request List</h1>
       <hr />
+
       {/* Search */}
       <div className="w-full relative">
         <input
@@ -153,11 +376,9 @@ const MaterialIssueRequestList = () => {
                 const newFromDate = e.target.value;
                 setFromDate(newFromDate);
                 setCurrentPage(1);
-
-                // Validate: fromDate should be less than toDate
                 if (toDate && newFromDate > toDate) {
                   setDateError(
-                    "From Date must be less than or equal to To Date"
+                    "From Date must be less than or equal to To Date",
                   );
                 } else {
                   setDateError("");
@@ -176,11 +397,9 @@ const MaterialIssueRequestList = () => {
                 const newToDate = e.target.value;
                 setToDate(newToDate);
                 setCurrentPage(1);
-
-                // Validate: toDate should be greater than fromDate
                 if (fromDate && newToDate < fromDate) {
                   setDateError(
-                    "To Date must be greater than or equal to From Date"
+                    "To Date must be greater than or equal to From Date",
                   );
                 } else {
                   setDateError("");
@@ -189,104 +408,139 @@ const MaterialIssueRequestList = () => {
             />
           </div>
         </div>
-
-        {/* Error Message */}
         {dateError && <p className="text-red-600 text-sm">{dateError}</p>}
       </div>
+
       <h2 className="font-bold text-lg">All Jobs</h2>
 
       {/* TABLE */}
-      <div className="overflow-x-auto rounded-2xl shadow-lg ">
+      <div className="overflow-x-auto rounded-2xl shadow-lg">
         <div className="max-w-1 inline-block align-middle">
-        <table className="table-auto rounded-xl min-w-1">
-          <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] md:text-xl px-3 text-white">
-            <tr>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Job Card No
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Job Name
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Customer Name
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Request Date
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Required Material
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Issued Material
-              </th>
-              <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
-                Request By
-              </th>
-              <th className="px-2 md:px-4 py-2">Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {currentItems.length === 0 ? (
+          <table className="table-auto rounded-xl min-w-1">
+            <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD] md:text-xl px-3 text-white">
               <tr>
-                <td colSpan="8" className="text-center p-8 text-gray-500">
-                  <div className="font-medium">No request found.</div>
-                </td>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Job Card No
+                </th>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Job Name
+                </th>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Customer Name
+                </th>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Request Date
+                </th>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Paper Size
+                </th>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Required Material
+                </th>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Issued Material
+                </th>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Request By
+                </th>
+                <th className="px-2 md:px-4 py-2 border-r-2 whitespace-nowrap">
+                  Action
+                </th>
+                {hasAnyIssued && (
+                  <th className="px-2 md:px-4 py-2 whitespace-nowrap">
+                    Cancel
+                  </th>
+                )}
               </tr>
-            ) : (
-              currentItems.map((item, index) => {
-                const issuedMeter = Number(item.issuedMeter || 0);
-                const isHighlighted = highlightId === item.id;
+            </thead>
 
-                return (
-                  <tr
-                    key={index}
-                    ref={(el) => (rowRefs.current[item.id] = el)}
-                    className={`border text-center transition-all duration-300 ${
-                      isHighlighted
-                        ? "bg-yellow-100 shadow-lg scale-[1.02]"
-                        : "hover:bg-gray-50"
-                    }`}
-                  >
-                    <td className="border px-4 py-2">{item.jobCardNo}</td>
-                    <td className="border px-4 py-2">{item.jobName}</td>
-                    <td className="border px-4 py-2">
-                      {item.customerName ?? "-"}
-                    </td>
-                    <td className="border px-4 py-2">
-                      {item.createdAt
-                        ? new Date(item.createdAt.seconds * 1000)
-                            .toISOString()
-                            .split("T")[0]
-                        : ""}
-                    </td>
-                    <td className="border px-4 py-2">
-                      {item.requiredMaterial
-                        ? parseFloat(item.requiredMaterial).toString()
-                        : ""}
-                    </td>
-                    <td className="border px-4 py-2">{issuedMeter}</td>
-                    <td className="border px-4 py-2">{item.createdBy}</td>
+            <tbody>
+              {currentItems.length === 0 ? (
+                <tr>
+                  <td colSpan="9" className="text-center p-8 text-gray-500">
+                    <div className="font-medium">No request found.</div>
+                  </td>
+                </tr>
+              ) : (
+                currentItems.map((item, index) => {
+                  const issuedMeter = Number(item.issuedMeter || 0);
+                  const isHighlighted = highlightId === item.id;
 
-                    {/* Action Column */}
-                    <td className="border px-4 py-2">
-                      {shouldShowIssueButton(item) ? (
-                        <button
-                          className="bg-[#D2D2D2]/40 border hover:border-primary font-semibold text-primary px-3 py-1 rounded-lg whitespace-nowrap"
-                          onClick={() => navigate(`/issue_material/${item.id}`)}
-                        >
-                          Issue Now
-                        </button>
-                      ) : (
-                        <span className="text-gray-400 text-sm">-</span>
+                  return (
+                    <tr
+                      key={index}
+                      ref={(el) => (rowRefs.current[item.id] = el)}
+                      className={`border text-center transition-all duration-300 ${
+                        isHighlighted
+                          ? "bg-yellow-100 shadow-lg scale-[1.02]"
+                          : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <td className="border px-4 py-2">{item.jobCardNo}</td>
+                      <td className="border px-4 py-2">{item.jobName}</td>
+                      <td className="border px-4 py-2">
+                        {item.customerName ?? "-"}
+                      </td>
+                      <td className="border px-4 py-2">
+                        {item.createdAt
+                          ? new Date(item.createdAt.seconds * 1000)
+                              .toISOString()
+                              .split("T")[0]
+                          : ""}
+                      </td>
+                      <td className="border px-4 py-2">{item.paperSize}</td>
+                      <td className="border px-4 py-2">
+                        {item.requiredMaterial
+                          ? parseFloat(item.requiredMaterial).toString()
+                          : ""}
+                      </td>
+                      <td className="border px-4 py-2">{issuedMeter}</td>
+                      <td className="border px-4 py-2">{item.createdBy}</td>
+
+                      {/* Action - Issue Now */}
+                      <td className="border px-4 py-2">
+                        {shouldShowIssueButton(item) ? (
+                          <button
+                            className="bg-[#D2D2D2]/40 border hover:border-primary font-semibold text-primary px-3 py-1 rounded-lg whitespace-nowrap"
+                            onClick={() =>
+                              navigate(`/issue_material/${item.id}`)
+                            }
+                          >
+                            Issue Now
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
+                      </td>
+
+                      {/* Cancel Column */}
+                      {hasAnyIssued && (
+                        <td className="border px-4 py-2">
+                          {shouldShowCancelButton(item) ? (
+                            <button
+                              className={`border font-semibold px-3 py-1 rounded-lg whitespace-nowrap transition-all ${
+                                cancellingId === item.id
+                                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                  : "bg-red-50 border-red-400 text-red-600 hover:bg-red-100"
+                              }`}
+                              onClick={() => handleCancelIssue(item)}
+                              disabled={cancellingId === item.id}
+                            >
+                              {cancellingId === item.id
+                                ? "Cancelling..."
+                                : "Cancel Issue"}
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
+                        </td>
                       )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

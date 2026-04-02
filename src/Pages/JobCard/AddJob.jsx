@@ -95,7 +95,6 @@ const FloatingSelect = ({
   const [isFocused, setIsFocused] = useState(false);
   const hasValue = value !== "" && value !== null && value !== undefined;
   // const shouldFloat = isFocused || hasValue;
-  
 
   return (
     <div className="relative">
@@ -105,7 +104,9 @@ const FloatingSelect = ({
         onChange={onChange}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        className={`inputStyle peer appearance-none ${error ? "border-red-500" : ""}`}
+        className={`inputStyle peer appearance-none ${
+          error ? "border-red-500" : ""
+        }`}
       >
         <option value="" disabled hidden></option>
         {options.map((item) => (
@@ -123,10 +124,9 @@ const FloatingSelect = ({
       >
         {label} {required && "*"}
       </label>
-       {/* Dropdown Arrow Icon */}
+      {/* Dropdown Arrow Icon */}
       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-        
-        <FaAngleDown className="w-5 h-5 text-textcolor"/>
+        <FaAngleDown className="w-5 h-5 text-textcolor" />
       </div>
       {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
     </div>
@@ -348,20 +348,20 @@ const AddJob = () => {
   }, [isEdit, id]);
 
   // Calculate total paper required
-  const calculateTotalPaper = useCallback((qty, size, ups, gap) => {
+  const calculateTotalPaper = useCallback((qty, size, ups, aroundUp) => {
     const totalLabels = parseFloat(qty);
     const labelSize = parseFloat(size);
     const across = parseFloat(ups);
-    const aroundGapValue = parseFloat(gap);
+    const aroundUpValue = parseFloat(aroundUp);
 
     if (
       !isNaN(totalLabels) &&
       !isNaN(labelSize) &&
       !isNaN(across) &&
-      !isNaN(aroundGapValue)
+      !isNaN(aroundUpValue)
     ) {
       const total =
-        ((labelSize + aroundGapValue) * totalLabels) / (1000 * across);
+        ((labelSize + aroundUpValue) * totalLabels) / (1000 * across);
       setTotalPaperRequired(total.toFixed(2));
     }
   }, []);
@@ -369,27 +369,26 @@ const AddJob = () => {
   const handleJobQtyChange = (e) => {
     const value = e.target.value;
     setJobQty(value);
-    calculateTotalPaper(value, calculationSize, upsAcrossValue, aroundGap);
+    calculateTotalPaper(value, calculationSize, upsAcrossValue, aroundValue);
   };
 
   const handleCalculationSizeChange = (e) => {
     const value = e.target.value;
     setCalculationSize(value);
-    calculateTotalPaper(jobQty, value, upsAcrossValue, aroundGap);
+    calculateTotalPaper(jobQty, value, upsAcrossValue, aroundValue);
   };
 
   const handleUpsAcrossChange = (e) => {
     const value = e.target.value;
     setUpsAcrossValue(value);
-    calculateTotalPaper(jobQty, calculationSize, value, aroundGap);
+    calculateTotalPaper(jobQty, calculationSize, value, aroundValue);
   };
 
-  const handleAroundGapChange = (e) => {
+  const handleAroundUpChange = (e) => {
     const value = e.target.value;
-    setAroundGap(value);
+    setAroundValue(value);
     calculateTotalPaper(jobQty, calculationSize, upsAcrossValue, value);
   };
-
   const findOption = (list, value) => {
     return list.find((i) => i.value === value) || { label: "", value: "" };
   };
@@ -554,7 +553,8 @@ const AddJob = () => {
     if (!jobQty) newErrors.jobQty = "Job Quantity is required";
     if (!calculationSize) newErrors.calculationSize = "Label size is required";
     if (!upsAcrossValue) newErrors.upsAcrossValue = "Across Ups is required";
-    if (!aroundGap) newErrors.aroundGap = "Around Gap is required";
+    if (!aroundValue) newErrors.aroundValue = "Around is required";
+    // if (!aroundGap) newErrors.aroundGap = "Around Gap is required";
     if (!totalPaperRequired)
       newErrors.totalPaperRequired = "Total Paper Required is required";
     if (!selectedLabelType)
@@ -808,21 +808,25 @@ const AddJob = () => {
             {/* Around */}
             <FloatingSelect
               name="around"
-              label="Around"
+              label="Around *"
               value={aroundValue}
-              onChange={(e) => setAroundValue(e.target.value)}
+              onChange={(e) => {
+                handleAroundUpChange(e);
+                setErrors((prev) => ({ ...prev, aroundValue: "" }));
+              }}
               options={around}
+              error={errors.aroundValue}
             />
 
             {/* Around Gap */}
             <FloatingInput
               type="number"
               name="aroundGap"
-              label="Around Gap *"
+              label="Around Gap"
               value={aroundGap}
               onChange={(e) => {
-                handleAroundGapChange(e);
-                setErrors((prev) => ({ ...prev, aroundGap: "" }));
+                const value = e.target.value;
+                setAroundGap(value);
               }}
               error={errors.aroundGap}
             />

@@ -4,6 +4,7 @@ export const materialTypeList = [
   { label: "PP Clear", value: "PP Clear" },
   { label: "PP Silver", value: "PP Silver" },
   { label: "Silver Paper", value: "Silver Paper" },
+  {label: 'Thermal', value: 'Thermal'},
 ];
 
 export const paperProductCodeData = [
@@ -11,6 +12,8 @@ export const paperProductCodeData = [
   { label: "Krutika", value: "Krutika" },
   { label: "Stiqa", value: "Stiqa" },
   { label: "Sun Paper", value: "Sun Paper" },
+  { label: "Papier Industries", value: "Papier Industries" },
+   {label: 'Kalp Traders', value: 'Kalp Traders'},
 ];
 
 export const printingPlateSize = [

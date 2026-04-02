@@ -20,7 +20,6 @@ import BackButton from "../../Components/BackButton";
 import SuccessPopup from "../../Components/SuccessPopup";
 import { FaAngleDown } from "react-icons/fa6";
 
-
 const PrimaryInput = ({
   type = "text",
   value,
@@ -57,7 +56,9 @@ const PrimaryInput = ({
       >
         {label}
       </label>
-      {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+      {/* {error && <p className="text-red-600 text-sm mt-1">{error}</p>} */}
+      {error && <p className="text-red-600 text-sm absolute -bottom-5 left-0">{error}</p>}
+
     </div>
   );
 };
@@ -101,10 +102,9 @@ const PrimarySelect = ({
         {label} {required && "*"}
       </label>
       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-              
-              <FaAngleDown className=" text-textcolor"/>
-            </div>
-      {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+        <FaAngleDown className=" text-textcolor" />
+      </div>
+      {error && <p className="text-red-600 text-sm absolute -bottom-5 left-0">{error}</p>}
     </div>
   );
 };
@@ -139,7 +139,7 @@ const AddMaterial = () => {
         setDate(
           data.date?.seconds
             ? new Date(data.date.seconds * 1000).toISOString().split("T")[0]
-            : ""
+            : "",
         );
         setPaperSize(data.paperSize || "");
 
@@ -156,6 +156,12 @@ const AddMaterial = () => {
     loadExisting();
   }, [id, isEdit]);
 
+  useEffect(() => {
+    const hasValid = rows.some((r) => r.runningMeter !== "" && r.roll !== "");
+    if (hasValid) {
+      setErrors((prev) => ({ ...prev, rows: "" }));
+    }
+  }, [rows]);
   /* ---------------------------------------------------
      HANDLE ROW CHANGES
   --------------------------------------------------- */
@@ -177,7 +183,7 @@ const AddMaterial = () => {
   const removeRow = (index) => {
     const updated = rows.filter((_, i) => i !== index);
     setRows(
-      updated.length ? updated : [{ runningMeter: "", roll: "", total: "" }]
+      updated.length ? updated : [{ runningMeter: "", roll: "", total: "" }],
     );
   };
 
@@ -196,8 +202,12 @@ const AddMaterial = () => {
       newErrors.jobPaper = "Please select material type";
     }
 
+    if (!paperSize) {
+      newErrors.paperSize = "Please enter paper size";
+    }
+
     const validRows = rows.filter(
-      (r) => r.runningMeter !== "" && r.roll !== ""
+      (r) => r.runningMeter !== "" && r.roll !== "",
     );
 
     if (validRows.length === 0) {
@@ -248,7 +258,7 @@ const AddMaterial = () => {
         const q1 = query(
           collection(db, "materials"),
           where("paperCode", ">=", prefix),
-          where("paperCode", "<=", prefix + "\uf8ff")
+          where("paperCode", "<=", prefix + "\uf8ff"),
         );
 
         const snap = await getDocs(q1);
@@ -312,6 +322,7 @@ const AddMaterial = () => {
         <div className="py-16 mt-10 space-y-10 bg-gray-100 container rounded-2xl">
           <form onSubmit={handleSubmit} className="space-y-10">
             <div className="grid md:grid-cols-2 gap-4 md:gap-8">
+            {/* <div className="grid md:grid-cols-2 gap-x-8 gap-y-6 items-start"> */}
               {/* DATE */}
               <PrimaryInput
                 type="date"
@@ -354,7 +365,12 @@ const AddMaterial = () => {
                 label="Company"
                 options={paperProductCodeData}
                 value={paperProductCode}
-                onChange={(e) => setPaperProductCode(e.target.value)}
+                error={errors.paperProductCode}
+                // onChange={(e) => setPaperProductCode(e.target.value)}
+                onChange={(e) => {
+                  setPaperProductCode(e.target.value);
+                  setErrors((prev) => ({ ...prev, paperProductCode: "" }));
+                }}
               />
 
               {/* MATERIAL TYPE */}
@@ -384,7 +400,12 @@ const AddMaterial = () => {
                 label="Material Type"
                 options={materialTypeList}
                 value={jobPaper}
-                onChange={(e) => setJobPaper(e.target.value)}
+                error={errors.jobPaper}
+                // onChange={(e) => setJobPaper(e.target.value)}
+                onChange={(e) => {
+                  setJobPaper(e.target.value);
+                  setErrors((prev) => ({ ...prev, jobPaper: "" }));
+                }}
               />
 
               {/* Paper Size */}
@@ -393,7 +414,12 @@ const AddMaterial = () => {
                 type="number"
                 placeholder="Paper Size"
                 value={paperSize}
-                onChange={(e) => setPaperSize(e.target.value)}
+                error={errors.paperSize}
+                // onChange={(e) => setPaperSize(e.target.value)}
+                onChange={(e) => {
+                  setPaperSize(e.target.value);
+                  setErrors((prev) => ({ ...prev, paperSize: "" }));
+                }}
               />
             </div>
             <hr />
