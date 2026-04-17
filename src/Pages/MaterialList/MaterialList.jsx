@@ -474,29 +474,43 @@ const MaterialList = () => {
       {/* Pagination */}
       <div className="flex gap-2 mt-5 justify-center items-center flex-wrap">
         <button
-          className="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           onClick={() => goToPage(currentPage - 1)}
           disabled={currentPage === 1}
         >
           Prev
         </button>
 
-        {[...Array(totalPages)].map((_, i) => (
-          <button
-            key={i}
-            className={`px-4 py-2 border rounded-md ${
-              currentPage === i + 1
-                ? "bg-[#3566AD] text-white"
-                : "hover:bg-gray-100"
-            }`}
-            onClick={() => goToPage(i + 1)}
-          >
-            {i + 1}
-          </button>
-        ))}
+        {(() => {
+          let startPage = Math.max(1, currentPage - 2);
+          let endPage = Math.min(totalPages, startPage + 4);
+
+          if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+          }
+
+          const pages = [];
+          for (let i = startPage; i <= endPage; i++) {
+            if (i < 1) continue;
+            pages.push(
+              <button
+                key={i}
+                className={`w-10 h-10 border rounded-md transition-all ${
+                  currentPage === i
+                    ? "bg-[#3566AD] text-white border-[#3566AD] font-bold shadow-md scale-110"
+                    : "hover:bg-gray-100 text-gray-600 border-gray-300"
+                }`}
+                onClick={() => goToPage(i)}
+              >
+                {i}
+              </button>
+            );
+          }
+          return pages;
+        })()}
 
         <button
-          className="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           onClick={() => goToPage(currentPage + 1)}
           disabled={currentPage === totalPages}
         >
