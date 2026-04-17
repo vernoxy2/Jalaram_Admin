@@ -9,17 +9,16 @@ const StockReport = () => {
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState(["RAW"]); // Default to RAW only
+  const [categoryFilter, setCategoryFilter] = useState(["RAW"]);
   const [paperCodeFilter, setPaperCodeFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [paperSizeFilter, setPaperSizeFilter] = useState("");
 
-  // Helper function to format numbers without decimals
   const formatNumber = (num) => {
     return num ? parseFloat(num).toString() : "0";
   };
 
-  // Helper function to safely extract value from potential objects
   const safeValue = (val) => {
     if (val === null || val === undefined) return "-";
     if (
@@ -32,7 +31,6 @@ const StockReport = () => {
     return val;
   };
 
-  // Handle category checkbox toggle
   const handleCategoryToggle = (category) => {
     setCategoryFilter((prev) => {
       if (prev.includes(category)) {
@@ -63,7 +61,6 @@ const StockReport = () => {
           ...doc.data(),
         }));
 
-        // Fetch orders for customer name
         const ordersSnapshot = await getDocs(collection(db, "ordersTest"));
         const orders = ordersSnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -71,23 +68,17 @@ const StockReport = () => {
         }));
 
         const stockReport = materials.map((material) => {
-          // Match transactions by paperCode for ALL material categories
           const materialTransactions = transactions.filter((t) => {
-            // For RAW materials: match against paperProductNo (comma-separated) OR direct paperCode
             if (material.materialCategory === "RAW") {
-              // Check direct paperCode match (for issue transactions)
               if (t.paperCode === material.paperCode) {
                 return true;
               }
-
-              // Check paperProductNo (comma-separated, for consumption transactions)
               const transactionPaperCodes = t.paperProductNo
                 ? t.paperProductNo.split(",").map((code) => code.trim())
                 : [];
               return transactionPaperCodes.includes(material.paperCode);
             }
 
-            // For LO/WIP materials: match by exact paperCode
             if (
               material.materialCategory === "LO" ||
               material.materialCategory === "WIP"
@@ -102,16 +93,12 @@ const StockReport = () => {
             return false;
           });
 
-          // ✅ Calculate Total Issue from issue transactions
-          // const issueTransactions = materialTransactions.filter(
-          //   (t) => t.transactionType === "issue"
-          // );
           const issueTransactions = materialTransactions.filter(
-            (t) => t.transactionType === "issue" && t.isCancelled !== true,
+            (t) => t.transactionType === "issue" && t.isCancelled !== true
           );
           const totalIssue = issueTransactions.reduce(
             (sum, t) => sum + (parseFloat(t.usedQty) || 0),
-            0,
+            0
           );
 
           let totalUsed = 0;
@@ -120,13 +107,12 @@ const StockReport = () => {
           let totalWIP = 0;
 
           if (material.materialCategory === "RAW") {
-            // ✅ For RAW: Find the LAST stage where material was used
             const stageOrder = ["printing", "punching", "slitting", "slotting"];
 
             let lastStage = null;
             for (let i = stageOrder.length - 1; i >= 0; i--) {
               const stageTransactions = materialTransactions.filter(
-                (t) => (t.stage || "").toLowerCase() === stageOrder[i],
+                (t) => (t.stage || "").toLowerCase() === stageOrder[i]
               );
               if (stageTransactions.length > 0) {
                 lastStage = stageOrder[i];
@@ -134,19 +120,17 @@ const StockReport = () => {
               }
             }
 
-            // Only count the LAST stage to avoid double counting
             if (lastStage) {
               const lastStageTransactions = materialTransactions.filter(
-                (t) => (t.stage || "").toLowerCase() === lastStage,
+                (t) => (t.stage || "").toLowerCase() === lastStage
               );
 
               totalUsed = lastStageTransactions.reduce(
                 (sum, t) => sum + (parseFloat(t.usedQty) || 0),
-                0,
+                0
               );
             }
 
-            // Sum waste, LO, WIP across ALL stages (these are actual losses/outputs)
             totalWaste = materialTransactions
               .filter((t) => t.transactionType === "consumption")
               .reduce((sum, t) => sum + (parseFloat(t.wasteQty) || 0), 0);
@@ -162,34 +146,29 @@ const StockReport = () => {
             material.materialCategory === "LO" ||
             material.materialCategory === "WIP"
           ) {
-            // ✅ For LO/WIP: Only calculate if material has been consumed
             const consumptionTransactions = materialTransactions.filter(
-              (t) => t.transactionType === "consumption",
+              (t) => t.transactionType === "consumption"
             );
 
-            // ✅ FIX: If no consumption transactions exist, this material hasn't been used yet
             if (consumptionTransactions.length > 0) {
               const created = material.totalRunningMeter || 0;
 
               totalWaste = consumptionTransactions.reduce(
                 (sum, t) => sum + (parseFloat(t.wasteQty) || 0),
-                0,
+                0
               );
               totalLO = consumptionTransactions.reduce(
                 (sum, t) => sum + (parseFloat(t.loQty) || 0),
-                0,
+                0
               );
               totalWIP = consumptionTransactions.reduce(
                 (sum, t) => sum + (parseFloat(t.wipQty) || 0),
-                0,
+                0
               );
-              // ✅ Used = Created - (Waste + LO + WIP)
               totalUsed = created - (totalWaste + totalLO + totalWIP);
 
-              // Ensure used is not negative
               if (totalUsed < 0) totalUsed = 0;
             } else {
-              // ✅ Material not consumed yet - all values are 0
               totalUsed = 0;
               totalWaste = 0;
               totalLO = 0;
@@ -201,7 +180,7 @@ const StockReport = () => {
             ? new Date(
                 material.createdAt.seconds
                   ? material.createdAt.seconds * 1000
-                  : material.createdAt,
+                  : material.createdAt
               )
             : new Date();
 
@@ -210,13 +189,11 @@ const StockReport = () => {
             material.materialCategory === "LO" ||
             material.materialCategory === "WIP";
 
-          // Find customer name from orders using sourceJobCardNo
           const matchingOrder = orders.find(
-            (order) => order.jobCardNo === material.sourceJobCardNo,
+            (order) => order.jobCardNo === material.sourceJobCardNo
           );
           const customerName = matchingOrder?.customerName || "-";
 
-          // Find which RAW paper codes were used to create this LO/WIP
           let usedRawPaperCodes = [];
           if (
             material.materialCategory === "LO" ||
@@ -249,7 +226,7 @@ const StockReport = () => {
             jobPaper: safeValue(material.jobPaper) || "-",
             purchased: isPurchased ? material.totalRunningMeter || 0 : 0,
             created: isCreated ? material.totalRunningMeter || 0 : 0,
-            totalIssue: totalIssue, // ✅ New field
+            totalIssue: totalIssue,
             used: totalUsed,
             waste: totalWaste,
             lo: totalLO,
@@ -291,8 +268,8 @@ const StockReport = () => {
     if (!matchesSearch) return false;
     if (fromDate && formattedDate < fromDate) return false;
     if (toDate && formattedDate > toDate) return false;
+    if (paperSizeFilter && item.paperSize !== paperSizeFilter) return false;
 
-    // ✅ Updated: Check if item's category is in the selected categories array
     if (
       categoryFilter.length > 0 &&
       !categoryFilter.includes(item.materialCategory)
@@ -300,7 +277,6 @@ const StockReport = () => {
       return false;
     }
 
-    // Paper Code History Filter
     if (paperCodeFilter) {
       if (
         item.paperCode === paperCodeFilter &&
@@ -334,44 +310,12 @@ const StockReport = () => {
     }
   };
 
-  // Summary totals
-  // const summaryTotals = filteredStock.reduce(
-  //   (acc, item) => {
-  //     acc.purchased += item.purchased;
-  //     acc.created += item.created;
-  //     acc.totalIssue += item.totalIssue; // ✅ New field
-  //     acc.used += item.used;
-  //     acc.waste += item.waste;
-
-  //     if (item.materialCategory === "LO") {
-  //       acc.loCreated += item.created;
-  //     }
-
-  //     if (item.materialCategory === "WIP") {
-  //       acc.wipCreated += item.created;
-  //     }
-
-  //     acc.available += item.available;
-
-  //     return acc;
-  //   },
-  //   {
-  //     purchased: 0,
-  //     created: 0,
-  //     totalIssue: 0, // ✅ New field
-  //     used: 0,
-  //     waste: 0,
-  //     loCreated: 0,
-  //     wipCreated: 0,
-  //     available: 0,
-  //   }
-  // );
-  // Summary totals - ALWAYS calculated from ALL data (stockData), not filtered
+  // Summary totals - Calculated from ALL stockData to reflect accurate overall stock
   const summaryTotals = stockData.reduce(
     (acc, item) => {
       acc.purchased += item.purchased;
       acc.created += item.created;
-      acc.totalIssue += item.totalIssue; // ✅ New field
+      acc.totalIssue += item.totalIssue;
       acc.used += item.used;
       acc.waste += item.waste;
 
@@ -390,23 +334,31 @@ const StockReport = () => {
     {
       purchased: 0,
       created: 0,
-      totalIssue: 0, // ✅ New field
+      totalIssue: 0,
       used: 0,
       waste: 0,
       loCreated: 0,
       wipCreated: 0,
       available: 0,
-    },
+    }
   );
-  // Get unique paper codes for filter dropdown
+
   const uniquePaperCodes = [
     ...new Set(
       stockData
         .filter((item) => item.materialCategory === "RAW")
         .map((item) => item.paperCode)
-        .filter((code) => code !== "-"),
+        .filter((code) => code !== "-")
     ),
   ].sort();
+
+  const uniquePaperSizes = [
+    ...new Set(
+      stockData
+        .map((item) => item.paperSize)
+        .filter((s) => s && s !== "-")
+    ),
+  ].sort((a, b) => Number(a) - Number(b));
 
   // Export to CSV
   const exportToCSV = () => {
@@ -526,6 +478,23 @@ const StockReport = () => {
             <span className="text-sm">meter</span>
           </h1>
         </div>
+        <div className="bg-teal-100 p-4 pb-6 rounded-lg shadow">
+          <div className="text-sm text-gray-600 mb-1">
+            No of Paper Size
+          </div>
+          <div className="flex flex-col">
+            <h1 className="font-bold text-teal-600 text-2xl">
+              {filteredStock.length} <span className="text-sm">Rolls</span>
+            </h1>
+            <div className="text-gray-700 font-medium text-sm mt-1">
+              Length:{" "}
+              {formatNumber(
+                filteredStock.reduce((sum, i) => sum + i.available, 0),
+              )}{" "}
+              meters
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
@@ -544,7 +513,7 @@ const StockReport = () => {
           <FiSearch className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
         </div>
 
-        {/* ✅ Category Checkboxes */}
+        {/* Category Checkboxes */}
         <div>
           <label className="block mb-2 font-medium">Category</label>
           <div className="flex gap-4 items-center border border-black/20 rounded-2xl p-3 bg-white">
@@ -592,6 +561,25 @@ const StockReport = () => {
             {uniquePaperCodes.map((code) => (
               <option key={code} value={code}>
                 {code}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block mb-2 font-medium ">Paper Size (mm)</label>
+          <select
+            value={paperSizeFilter}
+            onChange={(e) => {
+              setPaperSizeFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="border border-black/20 rounded-2xl p-3 min-w-[150px]"
+          >
+            <option value="">All Sizes</option>
+            {uniquePaperSizes.map((size) => (
+              <option key={size} value={size}>
+                {size} mm
               </option>
             ))}
           </select>
@@ -646,191 +634,215 @@ const StockReport = () => {
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-2xl shadow-lg ">
-        <div className="max-w-1 inline-block align-middle">
-          <table className="table-auto w-full ">
-            <thead className="bg-gradient-to-t from-[#102F5C] to-[#3566AD]  text-white">
+     {/* <div className="overflow-x-auto overflow-y-auto max-h-[600px] rounded-2xl shadow-lg border border-gray-200 relative" */}
+    <div className="overflow-x-auto rounded-2xl shadow-lg border border-gray-200 relative">
+        <table className="table-auto w-full border-separate border-spacing-0">
+          <thead>
+            <tr className="text-white">
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af] first:rounded-tl-2xl">
+                Date
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+                Paper Code
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+                Company
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+                Material Type
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+                Category
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+                Customer
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+                Paper Size
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1a365d]">
+                Purchased
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1a365d]">
+                Created
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#7c2d12]">
+                Total Issue
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+                Used
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+                Waste
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+                LO
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+                WIP
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+                Available
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+                Source Job
+              </th>
+              <th className="sticky top-[80px]  z-20 px-3 py-4 border-b border-white/20 whitespace-nowrap bg-[#1e40af] last:rounded-tr-2xl">
+                Source Stage
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {currentItems.map((item) => (
+              <tr className="text-center hover:bg-gray-50 transition-colors" key={item.id}>
+                <td className="border-r border-b px-3 py-3 text-sm">
+                  {item.date.toLocaleDateString("en-IN")}
+                </td>
+                <td className="border-r border-b px-3 py-3 font-medium text-sm">
+                  {item.paperCode}
+                </td>
+                <td className="border-r border-b px-3 py-3 text-sm">
+                  {item.paperProductCode}
+                </td>
+                <td className="border-r border-b px-3 py-3 text-sm">
+                  {item.jobPaper}
+                </td>
+                <td className="border-r border-b px-3 py-3">
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      item.materialCategory === "RAW"
+                        ? "bg-blue-100 text-blue-800"
+                        : item.materialCategory === "LO"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-purple-100 text-purple-800"
+                    }`}
+                  >
+                    {item.materialCategory}
+                  </span>
+                </td>
+                <td className="border-r border-b px-3 py-3 text-sm">
+                  {item.customerName}
+                </td>
+                <td className="border-r border-b px-3 py-3 text-sm">
+                  {item.paperSize}
+                </td>
+                <td className="border-r border-b px-3 py-3 font-semibold bg-blue-50 text-sm">
+                  {item.purchased > 0 ? formatNumber(item.purchased) : "-"}
+                </td>
+                <td className="border-r border-b px-3 py-3 font-semibold bg-blue-50 text-sm">
+                  {item.created > 0 ? formatNumber(item.created) : "-"}
+                </td>
+                <td className="border-r border-b px-3 py-3 font-semibold bg-orange-50 text-orange-600 text-sm">
+                  {formatNumber(item.totalIssue)}
+                </td>
+                <td className="border-r border-b px-3 py-3 text-green-600 text-sm">
+                  {formatNumber(item.used)}
+                </td>
+                <td className="border-r border-b px-3 py-3 text-red-600 text-sm">
+                  {formatNumber(item.waste)}
+                </td>
+                <td className="border-r border-b px-3 py-3 text-yellow-600 text-sm">
+                  {formatNumber(item.lo)}
+                </td>
+                <td className="border-r border-b px-3 py-3 text-purple-600 text-sm">
+                  {formatNumber(item.wip)}
+                </td>
+                <td className="border-r border-b px-3 py-3 font-bold text-indigo-600 text-sm">
+                  {formatNumber(item.available)}
+                </td>
+                <td className="border-r border-b px-3 py-3 text-sm">
+                  {item.sourceJobCardNo}
+                </td>
+                <td className="border-b px-3 py-3 capitalize text-sm">
+                  {item.sourceStage}
+                </td>
+              </tr>
+            ))}
+
+            {currentItems.length === 0 && (
               <tr>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  Date
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  Paper Code
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  Company
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  Material Type
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  Category
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  Customer
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  Paper Size
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal bg-blue-900">
-                  Purchased
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal bg-blue-900">
-                  Created
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal bg-orange-900">
-                  Total Issue
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  Used
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  Waste
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  LO
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  WIP
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  Available
-                </th>
-                <th className="px-3 py-3 border-r-2 whitespace-nowrap md:whitespace-normal">
-                  Source Job
-                </th>
-                <th className="px-3 py-3">Source Stage</th>
+                <td colSpan="17" className="text-center p-8 text-gray-500">
+                  No stock data found
+                </td>
               </tr>
-            </thead>
+            )}
+          </tbody>
 
-            <tbody>
-              {currentItems.map((item) => (
-                <tr className="text-center hover:bg-gray-50" key={item.id}>
-                  <td className="border px-3 py-2">
-                    {item.date.toLocaleDateString("en-IN")}
-                  </td>
-                  <td className="border px-3 py-2  font-medium">
-                    {item.paperCode}
-                  </td>
-                  <td className="border px-3 py-2 ">{item.paperProductCode}</td>
-                  <td className="border px-3 py-2 ">{item.jobPaper}</td>
-                  <td className="border px-3 py-2">
-                    <span
-                      className={`px-2 py-1 rounded-full  font-semibold ${
-                        item.materialCategory === "RAW"
-                          ? "bg-blue-200 text-blue-800"
-                          : item.materialCategory === "LO"
-                            ? "bg-yellow-200 text-yellow-800"
-                            : "bg-purple-200 text-purple-800"
-                      }`}
-                    >
-                      {item.materialCategory}
-                    </span>
-                  </td>
-                  <td className="border px-3 py-2 ">{item.customerName}</td>
-                  <td className="border px-3 py-2 ">{item.paperSize}</td>
-                  <td className="border px-3 py-2  font-semibold bg-blue-50">
-                    {item.purchased > 0 ? formatNumber(item.purchased) : "-"}
-                  </td>
-                  <td className="border px-3 py-2 font-semibold bg-blue-50">
-                    {item.created > 0 ? formatNumber(item.created) : "-"}
-                  </td>
-                  <td className="border px-3 py-2 font-semibold bg-orange-50 text-orange-600">
-                    {formatNumber(item.totalIssue)}
-                  </td>
-                  <td className="border px-3 py-2 text-green-600">
-                    {formatNumber(item.used)}
-                  </td>
-                  <td className="border px-3 py-2 text-red-600">
-                    {formatNumber(item.waste)}
-                  </td>
-                  <td className="border px-3 py-2 text-yellow-600">
-                    {formatNumber(item.lo)}
-                  </td>
-                  <td className="border px-3 py-2 text-purple-600">
-                    {formatNumber(item.wip)}
-                  </td>
-                  <td className="border px-3 py-2 font-bold text-indigo-600">
-                    {formatNumber(item.available)}
-                  </td>
-                  <td className="border px-3 py-2 ">{item.sourceJobCardNo}</td>
-                  <td className="border px-3 py-2 capitalize">
-                    {item.sourceStage}
-                  </td>
-                </tr>
-              ))}
-
-              {currentItems.length === 0 && (
-                <tr>
-                  <td colSpan="17" className="text-center p-4 text-gray-500">
-                    No stock data found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-
-            <tfoot className="bg-gray-100 font-bold">
-              <tr className="text-center">
-                <td colSpan="7" className="border px-3 py-3 text-right">
-                  TOTALS:
-                </td>
-                <td className="border px-3 py-3 text-blue-600 bg-blue-50">
-                  {formatNumber(summaryTotals.purchased)}
-                </td>
-                <td className="border px-3 py-3 text-blue-600 bg-blue-50">
-                  {formatNumber(summaryTotals.created)}
-                </td>
-                <td className="border px-3 py-3 text-orange-600 bg-orange-50">
-                  {formatNumber(summaryTotals.totalIssue)}
-                </td>
-                <td className="border px-3 py-3 text-green-600">
-                  {formatNumber(summaryTotals.used)}
-                </td>
-                <td className="border px-3 py-3 text-red-600">
-                  {formatNumber(summaryTotals.waste)}
-                </td>
-                <td className="border px-3 py-3 text-yellow-600">
-                  {formatNumber(summaryTotals.loCreated)}
-                </td>
-                <td className="border px-3 py-3 text-purple-600">
-                  {formatNumber(summaryTotals.wipCreated)}
-                </td>
-                <td className="border px-3 py-3 text-indigo-600">
-                  {formatNumber(summaryTotals.available)}
-                </td>
-                <td colSpan="2" className="border"></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+          <tfoot className="bg-gray-100 font-bold sticky bottom-0 z-10">
+            <tr className="text-center border-t-2 border-gray-300">
+              <td colSpan="7" className="border-r px-3 py-4 text-right">
+                TOTALS:
+              </td>
+              <td className="border-r px-3 py-4 text-blue-600 bg-blue-50">
+                {formatNumber(summaryTotals.purchased)}
+              </td>
+              <td className="border-r px-3 py-4 text-blue-600 bg-blue-50">
+                {formatNumber(summaryTotals.created)}
+              </td>
+              <td className="border-r px-3 py-4 text-orange-600 bg-orange-50">
+                {formatNumber(summaryTotals.totalIssue)}
+              </td>
+              <td className="border-r px-3 py-4 text-green-600">
+                {formatNumber(summaryTotals.used)}
+              </td>
+              <td className="border-r px-3 py-4 text-red-600">
+                {formatNumber(summaryTotals.waste)}
+              </td>
+              <td className="border-r px-3 py-4 text-yellow-600">
+                {formatNumber(summaryTotals.loCreated)}
+              </td>
+              <td className="border-r px-3 py-4 text-purple-600">
+                {formatNumber(summaryTotals.wipCreated)}
+              </td>
+              <td className="border-r px-3 py-4 text-indigo-600">
+                {formatNumber(summaryTotals.available)}
+              </td>
+              <td colSpan="2" className="border-l"></td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
 
       {/* Pagination */}
-      <div className="flex gap-2 mt-5 justify-center">
+      <div className="flex gap-2 mt-5 justify-center items-center">
         <button
-          className="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50"
+          className="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 transition-colors"
           onClick={() => goToPage(currentPage - 1)}
           disabled={currentPage === 1}
         >
           Prev
         </button>
 
-        {[...Array(totalPages)].map((_, i) => (
-          <button
-            key={i}
-            className={`px-4 py-2 border rounded-md ${
-              currentPage === i + 1
-                ? "bg-blue-500 text-white"
-                : "hover:bg-gray-100"
-            }`}
-            onClick={() => goToPage(i + 1)}
-          >
-            {i + 1}
-          </button>
-        ))}
+        {(() => {
+          let startPage = Math.max(1, currentPage - 2);
+          let endPage = Math.min(totalPages, startPage + 4);
+
+          if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+          }
+
+          const pages = [];
+          for (let i = startPage; i <= endPage; i++) {
+            pages.push(
+              <button
+                key={i}
+                className={`w-10 h-10 border rounded-md transition-all ${
+                  currentPage === i
+                    ? "bg-blue-600 text-white border-blue-600 font-bold shadow-md scale-110"
+                    : "hover:bg-gray-100 text-gray-600 border-gray-300"
+                }`}
+                onClick={() => goToPage(i)}
+              >
+                {i}
+              </button>
+            );
+          }
+          return pages;
+        })()}
 
         <button
-          className="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50"
+          className="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 transition-colors"
           onClick={() => goToPage(currentPage + 1)}
           disabled={currentPage === totalPages}
         >
