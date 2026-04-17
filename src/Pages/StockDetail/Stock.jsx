@@ -639,55 +639,55 @@ const StockReport = () => {
         <table className="table-auto w-full border-separate border-spacing-0">
           <thead>
             <tr className="text-white">
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af] first:rounded-tl-2xl">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af] first:rounded-tl-2xl">
                 Date
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
                 Paper Code
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
                 Company
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
                 Material Type
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
                 Category
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
                 Customer
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
                 Paper Size
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1a365d]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1a365d]">
                 Purchased
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1a365d]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1a365d]">
                 Created
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#7c2d12]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#7c2d12]">
                 Total Issue
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
                 Used
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
                 Waste
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
                 LO
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
                 WIP
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
                 Available
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
+              <th className=" px-3 py-4 border-r border-b border-white/20 whitespace-nowrap bg-[#1e40af]">
                 Source Job
               </th>
-              <th className="sticky top-[80px]  z-20 px-3 py-4 border-b border-white/20 whitespace-nowrap bg-[#1e40af] last:rounded-tr-2xl">
+              <th className=" px-3 py-4 border-b border-white/20 whitespace-nowrap bg-[#1e40af] last:rounded-tr-2xl">
                 Source Stage
               </th>
             </tr>
@@ -769,7 +769,7 @@ const StockReport = () => {
             )}
           </tbody>
 
-          <tfoot className="bg-gray-100 font-bold sticky bottom-0 z-10">
+          <tfoot className="bg-gray-100 font-bold">
             <tr className="text-center border-t-2 border-gray-300">
               <td colSpan="7" className="border-r px-3 py-4 text-right">
                 TOTALS:
